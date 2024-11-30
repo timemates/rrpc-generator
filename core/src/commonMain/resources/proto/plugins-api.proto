@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+message PluginSignal {
+  string id = 1;
+  oneof intent {
+    Intent.SendUserSchema sendSchema = 2;
+  }
+
+  message Intent {
+    message SendUserSchema {}
+  }
+}

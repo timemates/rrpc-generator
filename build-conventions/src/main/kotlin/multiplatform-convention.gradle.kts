@@ -1,4 +1,4 @@
-import org.jetbrains.kotlin.gradle.dsl.*
+import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 
 plugins {
     kotlin("multiplatform")
@@ -8,5 +8,8 @@ kotlin {
     jvm()
     jvmToolchain(11)
 
-    explicitApi = ExplicitApiMode.Strict
+    @OptIn(ExperimentalKotlinGradlePluginApi::class)
+    compilerOptions {
+        optIn.add("kotlinx.serialization.ExperimentalSerializationApi")
+    }
 }
