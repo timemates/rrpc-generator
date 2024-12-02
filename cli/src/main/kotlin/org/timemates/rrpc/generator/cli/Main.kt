@@ -8,7 +8,6 @@ import okio.source
 import org.timemates.rrpc.codegen.CodeGenerator
 import org.timemates.rrpc.codegen.plugin.GeneratorCommunication
 import org.timemates.rrpc.codegen.plugin.data.*
-import org.timemates.rrpc.generator.kotlin.adapter.KotlinSchemaAdapter
 import java.util.*
 import kotlin.system.exitProcess
 
@@ -16,7 +15,7 @@ import kotlin.system.exitProcess
  * List of options for functionality that is builtin in the rrgcli by default,
  * such as Kotlin Code Generation.
  */
-private val BUILTIN_OPTIONS = (CodeGenerator.baseOptions + KotlinSchemaAdapter.options).map { it.toOptionDescriptor() }
+private val BUILTIN_OPTIONS = (CodeGenerator.BASE_OPTIONS + KotlinSchemaAdapter.options).map { it.toOptionDescriptor() }
 
 private val exceptionHandler = CoroutineExceptionHandler { _, exception ->
     println("rrgcli exit with error: ${exception.message}")

@@ -1,27 +1,20 @@
 package org.timemates.rrpc.generator.cli
 
 import com.github.ajalt.clikt.command.SuspendingCliktCommand
-import com.github.ajalt.clikt.core.CliktCommand
 import com.github.ajalt.clikt.parameters.options.*
 import com.github.ajalt.clikt.parameters.types.*
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import okio.FileSystem
 import org.timemates.rrpc.codegen.CodeGenerator
 import org.timemates.rrpc.codegen.configuration.GenerationOptions
 import org.timemates.rrpc.codegen.configuration.OptionTypeKind
-import org.timemates.rrpc.codegen.configuration.RepeatableGenerationOption
-import org.timemates.rrpc.codegen.configuration.SingleGenerationOption
 import org.timemates.rrpc.codegen.plugin.data.GeneratorMessage
 import org.timemates.rrpc.codegen.plugin.data.GeneratorSignal
 import org.timemates.rrpc.codegen.plugin.data.OptionDescriptor
 import org.timemates.rrpc.codegen.plugin.data.PluginSignal
 import org.timemates.rrpc.codegen.plugin.data.SignalId
-import org.timemates.rrpc.generator.kotlin.adapter.KotlinSchemaAdapter
 import java.util.UUID
 
 class GenerateCommand(
@@ -56,7 +49,7 @@ class GenerateCommand(
         val resolver = CodeGenerator(FileSystem.SYSTEM)
             .generate(
                 options = genOptions,
-                adapters = listOf(KotlinSchemaAdapter),
+                plugins = listOf(KotlinSchemaAdapter),
             )
 
         plugins.map { plugin ->

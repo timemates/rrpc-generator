@@ -13,6 +13,9 @@ dependencies {
     // -- Project --
     commonMainImplementation(projects.core)
 
+    // -- Coroutines --
+    commonMainImplementation(libs.kotlinx.coroutines)
+
     // -- SquareUp --
     commonMainImplementation(libs.squareup.kotlinpoet)
     commonMainImplementation(libs.squareup.okio)

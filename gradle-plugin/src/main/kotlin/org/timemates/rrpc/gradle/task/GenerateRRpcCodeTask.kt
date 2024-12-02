@@ -16,12 +16,13 @@ public abstract class GenerateRRpcCodeTask : DefaultTask() {
         val extension = project.extensions.findByType(RRpcExtension::class.java)
             ?: throw GradleException("RRpcExtension is not configured")
         
-//        val outputDir = project.layout.buildDirectory.dir("rrpc/generated").get().asFile
-//        outputDir.mkdirs()
+        val outputDir = project.layout.buildDirectory.dir("rrpc/generated").get().asFile
+        outputDir.mkdirs()
 
         logger.lifecycle("Generating RRpc code in $outputDir")
         // Call your generation logic here, for example:
         // 1. Resolve inputs
         // 2. Call the plugins to generate files
+
     }
 }

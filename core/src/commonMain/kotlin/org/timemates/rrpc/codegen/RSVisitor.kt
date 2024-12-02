@@ -8,7 +8,7 @@ import org.timemates.rrpc.common.schema.*
  * @param D The type of data passed during the traversal.
  * @param R The type of result returned from the visit methods.
  */
-public interface RMVisitor<D, R> {
+public interface RSVisitor<D, R> {
     public fun visitFile(file: RSFile, data: D): R
     public fun visitService(service: RSService, data: D): R
     public fun visitType(type: RSType, data: D): R

@@ -43,7 +43,7 @@ public sealed interface GPCommunication<TInput : GPMessage<*>, TOutput : GPMessa
  */
 @Suppress("UNCHECKED_CAST")
 public suspend inline fun <TInput : GPSignal, TOutput : GPSignal, TInputMessage : GPMessage<TInput>, TOutputMessage : GPMessage<TOutput>> GPCommunication<TInputMessage, TOutputMessage>.receive(
-    block: (TInput) -> List<TOutput>,
+    block: (TInput) -> TOutput,
 ) {
     while (incoming.hasNext()) {
         val message = incoming.next()
@@ -51,23 +51,21 @@ public suspend inline fun <TInput : GPSignal, TOutput : GPSignal, TInputMessage 
 
         val isPluginSide = signal is PluginSignal
 
-        val responses = block(signal)
+        val response = block(signal)
 
-        for (response in responses) {
-            send(
-                if (isPluginSide) {
-                    PluginMessage.create {
-                        id = message.id
-                        this.signal = response as PluginSignal?
-                    }
-                } else {
-                    GeneratorMessage.create {
-                        id = message.id
-                        this.signal = response as GeneratorSignal?
-                    }
-                } as TOutputMessage
-            )
-        }
+        send(
+            if (isPluginSide) {
+                PluginMessage.create {
+                    id = message.id
+                    this.signal = response as PluginSignal?
+                }
+            } else {
+                GeneratorMessage.create {
+                    id = message.id
+                    this.signal = response as GeneratorSignal?
+                }
+            } as TOutputMessage
+        )
     }
 }
 

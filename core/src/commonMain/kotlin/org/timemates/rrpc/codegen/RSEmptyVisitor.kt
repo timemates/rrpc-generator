@@ -2,7 +2,7 @@ package org.timemates.rrpc.codegen
 
 import org.timemates.rrpc.common.schema.*
 
-public abstract class RMEmptyVisitor<D, R> : RMVisitor<D, R> {
+public abstract class RSEmptyVisitor<D, R> : RSVisitor<D, R> {
     public abstract fun defaultHandler(node: RSNode, data: D): R
 
     override fun visitFile(file: RSFile, data: D): R {

@@ -24,8 +24,6 @@ public sealed interface PluginSignal : GPSignal {
         @Serializable
         public data class Finished(public val message: String) : RequestStatusChange
         @Serializable
-        public data object Accepted : RequestStatusChange
-        @Serializable
         public data class Failed(public val message: String) : RequestStatusChange
     }
 }
@@ -87,9 +85,6 @@ public class PluginMessage @PublishedApi internal constructor(
                     is PluginSignal.RequestInput ->
                         RequestInputField(value)
 
-                    is PluginSignal.RequestStatusChange.Accepted ->
-                        RequestStatusAcceptedField(value)
-
                     is PluginSignal.RequestStatusChange.Failed ->
                         RequestStatusFailedField(value)
 
@@ -97,7 +92,6 @@ public class PluginMessage @PublishedApi internal constructor(
 
                     is PluginSignal.RequestStatusChange.Finished ->
                         RequestStatusFinishedField(value)
-
 
                     null -> null
                 }
@@ -125,12 +119,6 @@ public class PluginMessage @PublishedApi internal constructor(
         value class RequestInputField(
             @ProtoNumber(2)
             override val value: PluginSignal.RequestInput,
-        ) : SignalOneOf
-
-        @JvmInline
-        value class RequestStatusAcceptedField(
-            @ProtoNumber(3)
-            override val value: PluginSignal.RequestStatusChange.Accepted,
         ) : SignalOneOf
 
         @JvmInline

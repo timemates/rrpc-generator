@@ -2,7 +2,7 @@ package org.timemates.rrpc.codegen
 
 import org.timemates.rrpc.common.schema.*
 
-public abstract class RMDefaultVisitor<D, R> : RMEmptyVisitor<D, R>() {
+public abstract class RSDefaultVisitor<D, R> : RSEmptyVisitor<D, R>() {
     override fun visitFile(file: RSFile, data: D): R {
         file.services.forEach { service ->
             visitService(service, data)
