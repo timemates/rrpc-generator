@@ -1,6 +1,6 @@
 package org.timemates.rrpc.gradle.configuration
 
-import org.gradle.api.provider.ListProperty
+import org.timemates.rrpc.gradle.type.ProtoDependencyType
 import org.timemates.rrpc.gradle.type.ProtoInput
 import java.io.File
 import java.nio.file.Path
@@ -13,68 +13,62 @@ import java.nio.file.Path
  *
  * @property list A list of `ProtoInput` objects which can be directories or archives to be used as Proto input sources.
  */
-public class ProtoInputBuilder(private val list: ListProperty<ProtoInput>) {
+public class ProtoInputBuilder(private val base: File, private val onAdded: (ProtoInput, ProtoDependencyType) -> Unit) {
 
     /**
-     * Adds a directory to the list of Proto input sources.
-     *
-     * @param file A file representing the directory to be included as a Proto input source.
+     * This type of dependency is used only to resolve types. It's useful
+     *  if the artifact you're using already has generated code, and you want to use it.
      */
-    public fun directory(file: File) {
-        list.add(ProtoInput.Directory(file.toPath()))
+    public fun context(block: SelectBuilder.() -> Unit) {
+        SelectBuilder(base) { protoInput -> onAdded(protoInput, ProtoDependencyType.CONTEXT) }.apply(block)
     }
 
     /**
-     * Adds a directory to the list of Proto input sources.
-     *
-     * @param path A path representing the directory to be included as a Proto input source.
+     * This type of dependency is used to generate code.
      */
-    public fun directory(path: Path) {
-        list.add(ProtoInput.Directory(path))
+    public fun source(block: SelectBuilder.() -> Unit) {
+        SelectBuilder(base) { protoInput -> onAdded(protoInput, ProtoDependencyType.CONTEXT) }.apply(block)
     }
 
-    /**
-     * Adds an archive file to the list of Proto input sources.
-     *
-     * @param file A file representing the archive to be included as a Proto input source.
-     * @param includes A list of paths within the resources folder of JAR/klib, which will be
-     * added to the inputs. By default, it includes all .proto files from the resources folder.
-     */
-    public fun artifact(
-        file: File,
-        includes: List<String> = listOf("/"),
-        excludes: List<String> = emptyList(),
-    ) {
-        list.add(ProtoInput.Artifact.File(file.toPath(), includes, excludes))
-    }
+    public class SelectBuilder(private val base: File, private val onAdded: (ProtoInput) -> Unit, ) {
+        /**
+         * Adds a directory to the list of Proto input sources/context.
+         *
+         * @param file A file representing the directory to be included as a Proto input source.
+         */
+        public fun directory(file: File) {
+            onAdded(ProtoInput.Directory(file.toPath()))
+        }
 
-    /**
-     * Adds an archive file to the list of Proto input sources.
-     *
-     * @param path A path representing the archive to be included as a Proto input source.
-     * @param includes A list of paths within the resources folder of JAR/klib, which will be
-     * added to the inputs. By default, it includes all .proto files from the resources folder.
-     */
-    public fun artifact(
-        path: Path,
-        includes: List<String> = listOf("/"),
-        excludes: List<String> = emptyList(),
-    ) {
-        list.add(ProtoInput.Artifact.File(path, includes, excludes))
-    }
+        /**
+         * Adds a directory to the list of Proto input sources/context.
+         *
+         * @param path A path representing the directory to be included as a Proto input source.
+         */
+        public fun directory(path: Path) {
+            onAdded(ProtoInput.Directory(path))
+        }
 
-    /**
-     * Adds an external dependency (e.g., a Maven artifact) as a Proto input source.
-     *
-     * @param coordinates The Maven coordinates of the external dependency.
-     * @param includes A list of paths within the resources folder of JAR/klib, which will be
-     * added to the inputs. By default, it includes all .proto files from the resources folder.
-     */
-    public fun external(
-        coordinates: String,
-        includes: List<String> = listOf("/"),
-        excludes: List<String> = emptyList(),
-    ) {
-        list.add(ProtoInput.Artifact.Dependency(coordinates, includes, excludes))
+        /**
+         * Adds a directory to the list of proto input sources/context.
+         */
+        public fun directory(path: String) {
+            onAdded(ProtoInput.Directory(File(base, path).toPath()))
+        }
+
+        /**
+         * Adds an .jar archive file to the list of Proto input sources.
+         *
+         * @param notation A path representing the archive to be included as a Proto input source.
+         * @param includes A list of paths within the resources folder of JAR/klib, which will be
+         * added to the inputs. By default, it includes all .proto files from the resources folder.
+         */
+        public fun artifact(
+            notation: Any,
+            includes: List<String> = listOf("/"),
+            excludes: List<String> = emptyList(),
+        ) {
+            onAdded(ProtoInput.Artifact(notation, includes, excludes))
+        }
     }
 }

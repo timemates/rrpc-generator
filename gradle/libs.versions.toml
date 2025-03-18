@@ -1,7 +1,7 @@
 [versions]
 kotlin = "2.0.21"
 kotlinx-coroutines = "1.9.0"
-kotlinx-serialization = "1.7.3"
+kotlinx-serialization = "1.8.0"
 ktor = "2.3.12"
 jupiter = "5.4.0"
 exposed = "0.41.1"
@@ -13,7 +13,7 @@ decompose = "3.2.1"
 flowmvi = "3.1.0-beta02"
 clikt = "5.0.1"
 graalvm = "0.10.3"
-rrpc-kotlin = "0.7.0-dev34"
+rrpc-kotlin = "1.0.0-dev11"
 
 [libraries]
 # kotlinx libraries
@@ -63,7 +63,7 @@ exposed-jdbc = { module = "org.jetbrains.exposed:exposed-jdbc", version.ref = "e
 
 # Plugin classpaths
 kotlin-plugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
-vanniktech-maven-publish = { module = "com.vanniktech.maven.publish:com.vanniktech.maven.publish.gradle.plugin", version.require = "0.25.3" }
+vanniktech-maven-publish = { module = "com.vanniktech.maven.publish:com.vanniktech.maven.publish.gradle.plugin", version.require = "0.30.0" }
 android-plugin = { module = "com.android.tools.build:gradle", version.ref = "android-gradle-plugin" }
 
 mockk = { group = "io.mockk", name = "mockk", version.require = "1.13.12" }

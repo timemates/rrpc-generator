@@ -17,7 +17,7 @@ dependencies {
 
     // -- Project --
     implementation(projects.core)
-    implementation(projects.kotlin)
+    implementation(projects.cli)
 
     // -- Libraries --
     implementation(libs.kotlin.plugin)
@@ -36,7 +36,7 @@ gradlePlugin {
             description = "Code Generator from .proto files to Kotlin code."
             tags = listOf("kotlin", "rsocket", "protobuf", "proto")
 
-            implementationClass = "org.timemates.rrpc.plugin.RRpcGenerationGradlePlugin"
+            implementationClass = "org.timemates.rrpc.gradle.RRpcGenerationGradlePlugin"
         }
     }
 }

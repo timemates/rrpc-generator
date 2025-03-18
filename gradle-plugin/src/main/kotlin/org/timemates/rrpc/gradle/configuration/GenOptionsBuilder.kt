@@ -19,7 +19,7 @@ public open class GenOptionsBuilder(private val generationOptions: MapProperty<S
 }
 
 @RRpcGradlePluginDsl
-public class KotlinConfigurationOptionsBuilder(generationOptions: MapProperty<String, Any>) {
+public class KotlinConfigurationOptionsBuilder(generationOptions: MapProperty<String, Any>) : GenOptionsBuilder(generationOptions) {
     internal companion object {
         const val OUTPUT: String = "kotlin_output"
         const val SERVER_GENERATION: String = "kotlin_server_generation"

@@ -1,6 +1,7 @@
 package org.timemates.rrpc.gradle.configuration
 
-import org.gradle.api.provider.ListProperty
+import org.gradle.api.Project
+import org.gradle.api.artifacts.Configuration
 import org.gradle.api.provider.MapProperty
 import org.timemates.rrpc.gradle.type.GenerationPlugin
 
@@ -14,32 +15,9 @@ import org.timemates.rrpc.gradle.type.GenerationPlugin
  * @property options A map of configuration options to customize the behavior of the plugins.
  */
 public class PluginsBuilder(
-    private val list: ListProperty<GenerationPlugin>,
-    private val options: MapProperty<String, Any>
+    private val project: Project,
+    private val configuration: Configuration,
 ) {
-
-    /**
-     * Configures the built-in Kotlin plugin for code generation.
-     *
-     * This method adds the `Kotlin` plugin to the list of plugins and provides a DSL
-     * scope for setting configuration options specific to Kotlin code generation.
-     *
-     * @param block A configuration block for setting Kotlin-specific options.
-     * Example usage:
-     * ```kotlin
-     * plugins {
-     *     kotlin {
-     *         // Configure Kotlin-specific options here
-     *         output = "build/generated/kotlin"
-     *     }
-     * }
-     * ```
-     */
-    public fun kotlin(block: KotlinConfigurationOptionsBuilder.() -> Unit) {
-        list.add(GenerationPlugin.Builtin.Kotlin)
-        KotlinConfigurationOptionsBuilder(options).apply(block)
-    }
-
     /**
      * Configures an external plugin for code generation.
      *
@@ -51,14 +29,18 @@ public class PluginsBuilder(
      * Example usage:
      * ```kotlin
      * plugins {
-     *     external("com.example:custom-plugin:1.0.0") {
-     *         put("customOption", "value")
-     *     }
+     *     add("com.example:custom-plugin:1.0.0")
      * }
      * ```
      */
-    public fun external(coordinates: String, block: GenOptionsBuilder.() -> Unit) {
-        list.add(GenerationPlugin.External(coordinates))
-        GenOptionsBuilder(options).apply(block)
+    public fun add(notation: Any) {
+        val dependency = project.dependencies.create(
+            notation,
+        )
+
+        project.dependencies.add(
+            configuration.name,
+            dependency,
+        )
     }
 }

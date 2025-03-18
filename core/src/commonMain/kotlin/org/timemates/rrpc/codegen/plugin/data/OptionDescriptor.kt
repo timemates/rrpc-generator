@@ -35,50 +35,50 @@ public data class OptionDescriptor private constructor(
     private sealed interface OptionTypeKindOneOf {
         val value: OptionTypeKind
 
-        @JvmInline
-        value class TextField(
+        @Serializable
+        data class TextField(
             @ProtoNumber(4)
             override val value: OptionTypeKind.Text,
         ) : OptionTypeKindOneOf
 
-        @JvmInline
-        value class BooleanField(
+        @Serializable
+        data class BooleanField(
             @ProtoNumber(5)
             override val value: OptionTypeKind.Boolean,
         ) : OptionTypeKindOneOf
 
-        @JvmInline
-        value class IntField(
+        @Serializable
+        data class IntField(
             @ProtoNumber(6)
             override val value: OptionTypeKind.Number.Int,
         ) : OptionTypeKindOneOf
 
-        @JvmInline
-        value class LongField(
+        @Serializable
+        data class LongField(
             @ProtoNumber(7)
             override val value: OptionTypeKind.Number.Long,
         ) : OptionTypeKindOneOf
 
-        @JvmInline
-        value class FloatField(
+        @Serializable
+        data class FloatField(
             @ProtoNumber(8)
             override val value: OptionTypeKind.Number.Float,
         ) : OptionTypeKindOneOf
 
-        @JvmInline
-        value class DoubleField(
+        @Serializable
+        data class DoubleField(
             @ProtoNumber(9)
             override val value: OptionTypeKind.Number.Double,
         ) : OptionTypeKindOneOf
 
-        @JvmInline
-        value class PathField(
+        @Serializable
+        data class PathField(
             @ProtoNumber(10)
             override val value: OptionTypeKind.Path,
         ) : OptionTypeKindOneOf
 
-        @JvmInline
-        value class ChoiceField(
+        @Serializable
+        data class ChoiceField(
             @ProtoNumber(11)
             override val value: OptionTypeKind.Choice,
         ) : OptionTypeKindOneOf

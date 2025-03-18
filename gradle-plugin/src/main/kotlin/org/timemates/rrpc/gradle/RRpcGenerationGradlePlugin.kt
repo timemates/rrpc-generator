@@ -1,92 +1,144 @@
 package org.timemates.rrpc.gradle
 
 import okio.FileSystem
-import okio.Path.Companion.toOkioPath
 import org.gradle.api.Plugin
 import org.gradle.api.Project
-import org.gradle.api.internal.provider.Providers
-import org.gradle.api.provider.Provider
+import org.gradle.api.artifacts.Configuration
+import org.gradle.api.attributes.Attribute
+import org.gradle.api.attributes.Category
+import org.gradle.api.attributes.Usage
 import org.gradle.kotlin.dsl.create
 import org.gradle.kotlin.dsl.findByType
 import org.jetbrains.kotlin.gradle.dsl.KotlinAndroidProjectExtension
 import org.jetbrains.kotlin.gradle.dsl.KotlinJvmProjectExtension
 import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
+import org.jetbrains.kotlin.gradle.plugin.KotlinPlatformType
 import org.jetbrains.kotlin.gradle.plugin.KotlinSourceSet
 import org.timemates.rrpc.codegen.CodeGenerator
 import org.timemates.rrpc.codegen.configuration.GenerationOptions
+import org.timemates.rrpc.generator.cli.RRpcGeneratorMain
+import org.timemates.rrpc.generator.kotlin.KotlinPluginService
 import java.io.File
 
 public class RRpcGenerationGradlePlugin : Plugin<Project> {
     override fun apply(target: Project) {
-        val extension = target.extensions.create<RRpcExtension>("rrpc", target.objects)
+        val sourceProtoDeps: Configuration = target.configurations.create("rrpcSourceProtoDependencies") {
+            isVisible = false
+            isCanBeConsumed = false
+            isCanBeResolved = true
+            attributes {
+                attribute(KotlinPlatformType.attribute, KotlinPlatformType.jvm)
+            }
+        }
 
-        val generateCode = target.tasks.create("generateCode") {
+        val contextProtoDeps: Configuration = target.configurations.create("rrpcContextProtoDependencies") {
+            isVisible = false
+            isCanBeConsumed = false
+            isCanBeResolved = true
+            attributes {
+                attribute(KotlinPlatformType.attribute, KotlinPlatformType.jvm)
+            }
+        }
+
+        val rrpcPluginsDeps: Configuration = target.configurations.create("rrpcPluginsDependencies") {
+            isVisible = false
+            isCanBeConsumed = false
+            isCanBeResolved = true
+            attributes {
+                attribute(
+                    Usage.USAGE_ATTRIBUTE,
+                    target.objects.named(Usage::class.java, "rrpc-binary")
+                )
+
+                attribute(
+                    Category.CATEGORY_ATTRIBUTE,
+                    target.objects.named(Category::class.java, Category.LIBRARY)
+                )
+
+                // Define the artifact type as 'rrpc-binary' or something unique
+                attribute(
+                    Attribute.of("artifactType", String::class.java),
+                    "rrpc-plugins-binary"
+                )
+            }
+        }
+
+        val extension = target.extensions.create<RRpcExtension>("rrpc", target, sourceProtoDeps, contextProtoDeps)
+
+        val help = target.tasks.register("rrpcGeneratorHelp") {
+            doLast {
+                RRpcGeneratorMain.main(
+                    buildList {
+                        rrpcPluginsDeps.artifacts.files.forEach { file ->
+                            add("--plugin=\"${file.absolutePath}\"")
+                        }
+                    }.toTypedArray()
+                )
+            }
+        }
+
+        val generateCode = target.tasks.register("generateRRpcCode") {
             group = "rrpc"
 
-            val outputsProvider =
-                extension.pluginConfigurations.flatMap<List<String>> { configurations ->
-                    val allOptions = configurations.flatMap<_, String> { configuration ->
-                        configuration.options.map.filter { it.filter { entry -> entry.key.endsWith("output") } }
-                            .map { map -> map.map { it.value } }
-                    }
-                    Providers.of(allOptions).map { listOfMaps ->
-                        listOfMaps.flatten()
-                    }
+            inputs.files(extension.inputFolders)
+            outputs.dir(project.layout.buildDirectory.dir("rrpc-generated"))
+
+            doLast {
+                sourceProtoDeps.resolve()
+                contextProtoDeps.resolve()
+
+                try {
+                    outputs.files.forEach(File::deleteRecursively)
+                } catch (e: Exception) {
+                    logger.error(e.stackTraceToString())
                 }
 
-            inputs.dir(extension.protosInput)
-            // сюда загнать хочу
-            outputs.dir(outputsProvider)
+                RRpcGeneratorMain.main(
+                    buildList {
+                        extension.options.get().forEach { (key, value) ->
+                            val value = value.toString()
+                            add("--$key" + if (value.contains(Regex("\\s"))) "\"$value\"" else value)
+                        }
 
-//            doLast {
-//                val codeGenerator = CodeGenerator(FileSystem.SYSTEM).generate(
-//                    options = GenerationOptions.create {
-//
-//                    },
-//                    adapters = mapOf()
-//                )
-//
-//                try {
-//                    generationOutputPath.get()
-//                        .asFile
-//                        .listFiles()
-//                        ?.forEach(File::deleteRecursively)
-//                } catch (e: Exception) {
-//                    if (logger.isDebugEnabled)
-//                        logger.error(e.stackTraceToString())
-//                }
-//
-//                codeGenerator.generate(
-//                    configuration = RMGlobalConfiguration(
-//                        inputs = target.file(extension.paths.protoSources.get()).toOkioPath(),
-//                        output = target.file(generationOutputPath).toOkioPath(),
-//                        clientGeneration = extension.profiles.client.get(),
-//                        serverGeneration = extension.profiles.server.get(),
-//                        builderTypes = extension.options.builderTypes.get(),
-//                        permitPackageCycles = extension.options.permitPackageCycles.get(),
-//                    )
-//                )
-//            }
-//        }
-//
-//        target.afterEvaluate {
-//            val allSourceSets = target.extensions.findByType<KotlinMultiplatformExtension>()?.sourceSets
-//                ?: target.extensions.findByType<KotlinJvmProjectExtension>()?.sourceSets
-//                ?: target.extensions.findByType<KotlinAndroidProjectExtension>()?.sourceSets
-//                ?: error("Does Kotlin plugin apply to the buildscript?")
-//
-//            val commonSourceSet = allSourceSets
-//                .findByName(KotlinSourceSet.COMMON_MAIN_SOURCE_SET_NAME)
-//            val mainSourceSet = allSourceSets.findByName("main")
-//
-//            val sourceSet = if (extension.targetSourceSet.getOrNull() != null)
-//                allSourceSets.getByName(extension.targetSourceSet.get())
-//            else commonSourceSet ?: mainSourceSet
-//
-//            sourceSet
-//                ?.kotlin
-//                ?.srcDirs(generateCode.outputs)
-//                ?: error(SOURCE_SET_NOT_FOUND)
+                        sourceProtoDeps.artifacts.files.forEach { file ->
+                            if (file.extension == "jar" || file.extension == "zip") {
+                                add("--${GenerationOptions.SOURCE_INPUT}=\"${file.absolutePath}\"")
+                            } else {
+                                logger.warn("${file.path} is not a jar or a zip file, skipping as a source dependency.")
+                            }
+                        }
+
+                        contextProtoDeps.artifacts.files.forEach { file ->
+                            if (file.extension == "jar" || file.extension == "zip") {
+                                add("--${GenerationOptions.CONTEXT_INPUT}=\"${file.absolutePath}\"")
+                            } else {
+                                logger.warn("${file.path} is not a jar or a zip file, skipping as a context dependency.")
+                            }
+                        }
+
+                        rrpcPluginsDeps.artifacts.files.forEach { file ->
+                            add("--plugin=\"${file.absolutePath}\"")
+                        }
+                    }.toTypedArray()
+                )
+            }
+        }
+
+        target.afterEvaluate {
+            val allSourceSets = target.extensions.findByType<KotlinMultiplatformExtension>()?.sourceSets
+                ?: target.extensions.findByType<KotlinJvmProjectExtension>()?.sourceSets
+                ?: target.extensions.findByType<KotlinAndroidProjectExtension>()?.sourceSets
+
+            val commonSourceSet = allSourceSets
+                ?.findByName(KotlinSourceSet.COMMON_MAIN_SOURCE_SET_NAME)
+            val mainSourceSet = allSourceSets?.findByName("main")
+
+            val sourceSet = commonSourceSet ?: mainSourceSet
+
+            sourceSet
+                ?.kotlin
+                ?.srcDirs(generateCode.get().outputs.files)
+                ?: error(SOURCE_SET_NOT_FOUND)
         }
     }
 }

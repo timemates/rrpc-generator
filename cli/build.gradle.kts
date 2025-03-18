@@ -21,11 +21,17 @@ dependencies {
     // -- KotlinX --
     implementation(libs.kotlinx.coroutines)
     implementation(libs.kotlinx.serialization.proto)
+
+    // -- Integration Tests --
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.kotlin.test)
+    testImplementation(libs.mockk)
+    testImplementation(projects.kotlin)
 }
 
 application {
     applicationName = "rrgcli"
-    mainClass = "org.timemates.rrpc.generator.cli.MainKt"
+    mainClass = "org.timemates.rrpc.generator.cli.RRpcGeneratorMain"
 }
 
 graalvmNative {

@@ -1,6 +1,8 @@
 package org.timemates.rrpc.codegen
 
-import org.timemates.rrpc.common.schema.*
+import org.timemates.rrpc.codegen.schema.RSFile
+import org.timemates.rrpc.codegen.schema.RSService
+import org.timemates.rrpc.codegen.schema.RSType
 
 public abstract class RSDefaultVisitor<D, R> : RSEmptyVisitor<D, R>() {
     override fun visitFile(file: RSFile, data: D): R {
@@ -9,6 +11,9 @@ public abstract class RSDefaultVisitor<D, R> : RSEmptyVisitor<D, R>() {
         }
         file.types.forEach { type ->
             visitType(type, data)
+        }
+        file.extends.forEach { extend ->
+            visitExtend(extend, data)
         }
         return super.visitFile(file, data)
     }

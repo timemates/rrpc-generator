@@ -1,22 +1,35 @@
 package org.timemates.rrpc.codegen.plugin.data
 
+import kotlinx.serialization.EncodeDefault
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.protobuf.ProtoIntegerType
 import kotlinx.serialization.protobuf.ProtoNumber
 import kotlinx.serialization.protobuf.ProtoOneOf
-import org.timemates.rrpc.common.schema.RSFile
+import kotlinx.serialization.protobuf.ProtoPacked
+import kotlinx.serialization.protobuf.ProtoType
+import kotlinx.serialization.protobuf.schema.ProtoBufSchemaGenerator
+import org.timemates.rrpc.codegen.schema.RSFile
 
-@Serializable
 public sealed interface GeneratorSignal : GPSignal {
     /**
-     * Command to request a list of all possible options available for the generator.
+     * Command to request a list of all possible options, name and description of the plugin.
      */
-    public data object FetchOptionsList : GeneratorSignal
+    @Serializable
+    public data class FetchMetadata(
+        @EncodeDefault
+        @ProtoNumber(1)
+        val dummy: String = "placeholder"
+    ) : GeneratorSignal
 
     /**
      * Sends the user's schema information to the plugin.
      */
+    @Serializable
     public data class SendInput(
         @ProtoNumber(1)
+        public val outputPath: String,
+        @EncodeDefault
+        @ProtoNumber(2)
         public val files: List<RSFile>,
     ) : GeneratorSignal
 }
@@ -38,11 +51,13 @@ public fun GeneratorMessage(
  * @property signal The actual signal being transmitted, encapsulated as a [GeneratorSignal].
  */
 @Serializable
-public class GeneratorMessage private constructor(
+public data class GeneratorMessage private constructor(
+    @ProtoType(ProtoIntegerType.DEFAULT)
     @ProtoNumber(1)
     public override val id: SignalId,
+    @EncodeDefault
     @ProtoOneOf
-    private val signalOneOf: SignalOneOf,
+    private val signalOneOf: GenSignalOneOf,
 ) : GPMessage<GeneratorSignal> {
     /**
      * Provides access to the signal being transmitted.
@@ -72,21 +87,21 @@ public class GeneratorMessage private constructor(
          */
         public var id: SignalId? = null
 
-        private var signalOneOf: SignalOneOf? = null
+        private var signalOneOf: GenSignalOneOf? = null
 
         /**
          * The signal associated with the message.
-         * Assigning a value automatically maps it to the appropriate sealed subclass of [SignalOneOf].
+         * Assigning a value automatically maps it to the appropriate sealed subclass of [GenSignalOneOf].
          */
         public var signal: GeneratorSignal?
-            get() = signalOneOf?.value
+            get() = TODO()
             set(value) {
                 signalOneOf = when (value) {
-                    is GeneratorSignal.FetchOptionsList ->
-                        SignalOneOf.FetchOptionsListField(value)
+                    is GeneratorSignal.FetchMetadata ->
+                        GenSignalOneOf.FetchMetadataField(value)
 
                     is GeneratorSignal.SendInput ->
-                        SignalOneOf.SendInputField(value)
+                        GenSignalOneOf.SendInputField(value)
 
                     null -> null
                 }
@@ -106,18 +121,23 @@ public class GeneratorMessage private constructor(
 
 
 @Serializable
-private sealed interface SignalOneOf {
-    val value: GeneratorSignal
-
-    @JvmInline
-    value class FetchOptionsListField(
-        @ProtoNumber(2)
-        override val value: GeneratorSignal.FetchOptionsList,
-    ) : SignalOneOf
-
-    @JvmInline
-    value class SendInputField(
+private sealed interface GenSignalOneOf {
+    @Serializable
+    data class FetchMetadataField(
+        @EncodeDefault
         @ProtoNumber(3)
-        override val value: GeneratorSignal.SendInput,
-    ) : SignalOneOf
+        val value: GeneratorSignal.FetchMetadata,
+    ) : GenSignalOneOf
+
+    @Serializable
+    data class SendInputField(
+        @EncodeDefault
+        @ProtoNumber(4)
+        val value: GeneratorSignal.SendInput,
+    ) : GenSignalOneOf
+}
+
+private val GenSignalOneOf.value: GeneratorSignal get() = when (this) {
+    is GenSignalOneOf.FetchMetadataField -> value
+    is GenSignalOneOf.SendInputField -> value
 }

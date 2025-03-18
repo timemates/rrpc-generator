@@ -11,9 +11,6 @@ group = "org.timemates.rrpc"
 version = System.getenv("LIB_VERSION") ?: "SNAPSHOT"
 
 dependencies {
-    // -- Project --
-    commonMainApi(libs.rrpc.schema)
-
     // -- Serialization --
     commonMainImplementation(libs.kotlinx.serialization.proto)
 

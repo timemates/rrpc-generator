@@ -5,8 +5,15 @@ import okio.BufferedSource
 import org.timemates.rrpc.codegen.configuration.GenerationOptions
 import org.timemates.rrpc.codegen.plugin.data.GeneratorSignal
 import org.timemates.rrpc.codegen.plugin.data.OptionDescriptor
+import org.timemates.rrpc.codegen.plugin.data.PluginMessage
 import org.timemates.rrpc.codegen.plugin.data.PluginSignal
-import org.timemates.rrpc.common.schema.RSFile
+import org.timemates.rrpc.codegen.plugin.data.PluginSignal.*
+import org.timemates.rrpc.codegen.plugin.data.PluginSignal.SendMetaInformation.*
+import org.timemates.rrpc.codegen.plugin.data.SignalId
+import org.timemates.rrpc.codegen.schema.RSFile
+import kotlin.system.exitProcess
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 
 public interface PluginService {
     public companion object {
@@ -28,36 +35,63 @@ public interface PluginService {
          * @param output The sink stream for sending responses to the generator.
          * @param service The `PluginService` implementation to handle incoming requests.
          */
+        @OptIn(ExperimentalUuidApi::class)
         public suspend fun main(
             args: List<String>,
             input: BufferedSource,
             output: BufferedSink,
             service: PluginService,
         ) {
+            /**
+             * To avoid messing up with binary data exchange between processes.
+             */
+            System.setOut(System.err)
             val arguments = Arguments(args.toTypedArray())
+            val communication = PluginCommunication(input, output)
 
-            val options = GenerationOptions.create {
-                service.options.forEach { descriptor ->
-                    if (descriptor.isRepeatable) {
-                        arguments.getNamedList(descriptor.name).forEach {
-                            rawAppend(descriptor.name, it)
-                        }
-                    } else {
-                        arguments.getNamedOrNull(descriptor.name)?.let {
-                            rawSet(descriptor.name, it)
-                        }
-                    }
-                }
+            val initSignal = communication.receiveOr<GeneratorSignal.FetchMetadata> {
+                exitProcess(0)
             }
 
-            PluginCommunication(input, output).receive { signal ->
-                when (signal) {
-                    GeneratorSignal.FetchOptionsList ->
-                        PluginSignal.SendOptions(service.options)
-
-                    is GeneratorSignal.SendInput -> service.generateCode(options, signal.files)
+            communication.send(
+                PluginMessage.create {
+                    id = SignalId(Uuid.random().toHexString())
+                    signal = SendMetaInformation(
+                        MetaInformation(
+                            options = service.options,
+                            name = service.name,
+                            description = service.description,
+                        )
+                    )
                 }
+            )
+
+            val sendInputSignal = communication.receiveOr<GeneratorSignal.SendInput> {
+                exitProcess(0)
             }
+
+            communication.send(
+                PluginMessage.create {
+                    id = SignalId(Uuid.random().toHexString())
+                    signal = service.generateCode(
+                        options = GenerationOptions.create {
+                            service.options.forEach { descriptor ->
+                                if (descriptor.isRepeatable) {
+                                    arguments.getNamedList(descriptor.name).forEach {
+                                        rawAppend(descriptor.name, it)
+                                    }
+                                } else {
+                                    arguments.getNamedOrNull(descriptor.name)?.let {
+                                        rawSet(descriptor.name, it)
+                                    }
+                                }
+                            }
+                            set(GenerationOptions.GEN_OUTPUT, sendInputSignal.outputPath)
+                        },
+                        files = sendInputSignal.files
+                    )
+                }
+            )
         }
     }
 
@@ -74,7 +108,7 @@ public interface PluginService {
     public suspend fun generateCode(
         options: GenerationOptions,
         files: List<RSFile>,
-    ): PluginSignal.RequestStatusChange
+    ): RequestStatusChange
 
     /**
      * Retrieves a list of options supported by the plugin.
@@ -102,29 +136,46 @@ public interface PluginService {
 
 @JvmInline
 private value class Arguments(private val array: Array<String>) {
-    /**
-     * @return [Boolean] whether the given [name] was presented in array of arguments.
-     */
     fun isPresent(name: String): Boolean {
-        return array.any { it.startsWith("-$name") }
+        return array.any { it.startsWith("--$name") }
     }
 
-    /**
-     * Returns value of the given argument with [name] or null.
-     */
     fun getNamedOrNull(name: String): String? {
-        val index = array.indexOfFirst { it.startsWith("-$name") }
+        val index = array.indexOfFirst { it.startsWith("--$name") }
             .takeIf { it >= 0 }
             ?: return null
 
-        return array[index]
-            .substringAfter("=")
+        val rawValue = array[index].substringAfter("=", missingDelimiterValue = "")
+        return parseValue(rawValue, index)
     }
 
     fun getNamedList(name: String): List<String> {
         return array.withIndex()
-            .filter { (_, value) -> value.startsWith("-$value") }
-            .map { (index, _) -> array[index + 1] }
-            .toList()
+            .filter { (_, value) -> value.startsWith("--$name") }
+            .mapNotNull { (index, value) ->
+                val rawValue = value.substringAfter("=", missingDelimiterValue = "")
+                parseValue(rawValue, index)
+            }
+    }
+
+    private fun parseValue(value: String, index: Int): String? {
+        return when {
+            value.isNotEmpty() -> value.trim('"')
+            index + 1 < array.size && array[index + 1].startsWith("\"") ->
+                extractQuotedValue(index + 1)
+            index + 1 < array.size -> array[index + 1]
+            else -> null
+        }
+    }
+
+    private fun extractQuotedValue(startIndex: Int): String {
+        val builder = StringBuilder()
+        for (i in startIndex until array.size) {
+            val part = array[i]
+            builder.append(part.trim('"'))
+            if (part.endsWith('"')) break
+            builder.append(" ")
+        }
+        return builder.toString()
     }
 }

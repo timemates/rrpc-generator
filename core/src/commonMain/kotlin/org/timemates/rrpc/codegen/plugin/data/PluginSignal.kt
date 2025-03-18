@@ -14,17 +14,29 @@ public sealed interface PluginSignal : GPSignal {
     public object RequestInput : PluginSignal
 
     @Serializable
-    public data class SendOptions(
+    public data class SendMetaInformation(
         @ProtoNumber(1)
-        public val options: List<OptionDescriptor>,
-    ) : PluginSignal
+        public val info: MetaInformation,
+    ) : PluginSignal {
+        @Serializable
+        public data class MetaInformation(
+            @ProtoNumber(1)
+            public val options: List<OptionDescriptor>,
+            @ProtoNumber(2)
+            public val name: String,
+            @ProtoNumber(3)
+            public val description: String,
+        )
+    }
 
     @Serializable
     public sealed interface RequestStatusChange : PluginSignal {
+        public val message: String
+
         @Serializable
-        public data class Finished(public val message: String) : RequestStatusChange
+        public data class Finished(public override val message: String) : RequestStatusChange
         @Serializable
-        public data class Failed(public val message: String) : RequestStatusChange
+        public data class Failed(public override val message: String) : RequestStatusChange
     }
 }
 
@@ -38,7 +50,7 @@ public sealed interface PluginSignal : GPSignal {
  * @property signal The actual signal being transmitted, encapsulated as a [PluginSignal].
  */
 @Serializable
-public class PluginMessage @PublishedApi internal constructor(
+public data class PluginMessage @PublishedApi internal constructor(
     @ProtoNumber(1)
     public override val id: SignalId,
     @ProtoOneOf
@@ -56,7 +68,7 @@ public class PluginMessage @PublishedApi internal constructor(
          * @param block A lambda used to configure the builder.
          * @return A fully constructed [PluginMessage] instance.
          */
-        public fun create(block: Builder.() -> Unit): PluginMessage =
+        public inline fun create(block: Builder.() -> Unit): PluginMessage =
             Builder().apply(block).build()
     }
 
@@ -88,7 +100,7 @@ public class PluginMessage @PublishedApi internal constructor(
                     is PluginSignal.RequestStatusChange.Failed ->
                         RequestStatusFailedField(value)
 
-                    is PluginSignal.SendOptions -> SendOptionsField(value)
+                    is PluginSignal.SendMetaInformation -> SendOptionsField(value)
 
                     is PluginSignal.RequestStatusChange.Finished ->
                         RequestStatusFinishedField(value)
@@ -102,7 +114,7 @@ public class PluginMessage @PublishedApi internal constructor(
          *
          * @throws IllegalStateException if either `id` or `command` is null.
          */
-        internal fun build(): PluginMessage = PluginMessage(
+        public fun build(): PluginMessage = PluginMessage(
             id ?: error("PluginMessage is required to have an id."),
             signalOneOf ?: error("PluginMessage is required to have a command."),
         )
@@ -115,27 +127,28 @@ public class PluginMessage @PublishedApi internal constructor(
     internal sealed interface SignalOneOf {
         val value: PluginSignal
 
-        @JvmInline
-        value class RequestInputField(
+        @Serializable
+        data class RequestInputField(
             @ProtoNumber(2)
             override val value: PluginSignal.RequestInput,
         ) : SignalOneOf
 
-        @JvmInline
-        value class RequestStatusFinishedField(
+        @Serializable
+        data class RequestStatusFinishedField(
             @ProtoNumber(3)
             override val value: PluginSignal.RequestStatusChange.Finished,
         ) : SignalOneOf
 
-        @JvmInline
-        value class RequestStatusFailedField(
+        @Serializable
+        data class RequestStatusFailedField(
             @ProtoNumber(4)
             override val value: PluginSignal.RequestStatusChange.Failed,
         ) : SignalOneOf
 
-        @JvmInline
-        value class SendOptionsField(
-            override val value: PluginSignal.SendOptions,
+        @Serializable
+        data class SendOptionsField(
+            @ProtoNumber(5)
+            override val value: PluginSignal.SendMetaInformation,
         ) : SignalOneOf
     }
 }

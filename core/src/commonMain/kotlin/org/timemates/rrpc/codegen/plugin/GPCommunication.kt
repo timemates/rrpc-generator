@@ -1,5 +1,8 @@
 package org.timemates.rrpc.codegen.plugin
 
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.protobuf.ProtoBuf
 import okio.BufferedSink
@@ -33,40 +36,25 @@ public sealed interface GPCommunication<TInput : GPMessage<*>, TOutput : GPMessa
      * The iterator can be used in a suspending loop to process each signal sequentially.
      */
     public val incoming: GPMessageIterator<TInput>
+
+    /**
+     * Returns whether the underlying source accepts any data.
+     */
+    public val isClosedForSend: Boolean
 }
 
-/**
- * High-level handler for processing and responding to incoming generator signals.
- *
- * @param block A handler function that takes a `GeneratorSignal` and returns a list of `PluginSignal` to respond with.
- * @throws CommunicationException If communication errors occur during processing.
- */
-@Suppress("UNCHECKED_CAST")
-public suspend inline fun <TInput : GPSignal, TOutput : GPSignal, TInputMessage : GPMessage<TInput>, TOutputMessage : GPMessage<TOutput>> GPCommunication<TInputMessage, TOutputMessage>.receive(
-    block: (TInput) -> TOutput,
-) {
-    while (incoming.hasNext()) {
+public suspend inline fun <reified TInput : GPSignal> GPCommunication<*, *>.receiveOr(crossinline block: () -> Nothing): TInput = coroutineScope{
+    while (isActive) {
+        if (incoming.isClosed || isClosedForSend) break
+        if (!incoming.hasNext()) continue
+
         val message = incoming.next()
         val signal = message.signal
 
-        val isPluginSide = signal is PluginSignal
-
-        val response = block(signal)
-
-        send(
-            if (isPluginSide) {
-                PluginMessage.create {
-                    id = message.id
-                    this.signal = response as PluginSignal?
-                }
-            } else {
-                GeneratorMessage.create {
-                    id = message.id
-                    this.signal = response as GeneratorSignal?
-                }
-            } as TOutputMessage
-        )
+        if (signal !is TInput) block() else return@coroutineScope signal
     }
+
+    block()
 }
 
 public fun PluginCommunication(
@@ -106,56 +94,52 @@ private class GPCommunicationImpl<TInput : GPMessage<*>, TOutput : GPMessage<*>>
 
     override val incoming: GPMessageIterator<TInput> = object : GPMessageIterator<TInput> {
         private var nextMessage: TInput? = null
-        private var isClosed = false
+        override var isClosed = false
+            private set
 
         override suspend fun hasNext(): Boolean {
+            if (nextMessage != null) return true
             if (!input.isOpen) return false
-            // Keep waiting for the next message until the source is closed.
             if (isClosed) return false
 
             nextMessage = try {
                 readMessage()
-            } catch (e: Exception) {
-                if (e is EOFException) {
-                    isClosed = true
-                    return false // End of stream
-                }
-                null
+            } catch (e: EOFException) {
+                isClosed = true
+                return false // End of stream
             }
 
-            return nextMessage != null
+            return true
         }
 
         override suspend fun next(): TInput {
-            return nextMessage ?: throw NoSuchElementException("No message available")
+            return nextMessage?.also { nextMessage = null } ?: throw NoSuchElementException("No message available")
         }
     }
+    override val isClosedForSend: Boolean
+        get() = !output.isOpen
 
+    @OptIn(ExperimentalStdlibApi::class)
     override suspend fun send(message: TOutput) {
         val bytes = ProtoBuf.encodeToByteArray(outputSerializer, message)
-        output.writeInt(bytes.size)
+        val size = bytes.size
+
+        output.writeIntLe(size)
         output.write(bytes)
         output.flush()
     }
 
+
+    @OptIn(ExperimentalStdlibApi::class)
     private fun readMessage(): TInput {
-        val size = input.readInt()
+        // Read the size of the message
+        val size = input.readIntLe()
+
+        // Read the message bytes based on the size
         val bytes = input.readByteArray(size.toLong())
+
+        // Decode and return the message
         return ProtoBuf.decodeFromByteArray(inputSerializer, bytes)
-    }
-
-    private fun BufferedSink.writeInt(value: Int) {
-        writeByte((value shr 24) and 0xFF)
-        writeByte((value shr 16) and 0xFF)
-        writeByte((value shr 8) and 0xFF)
-        writeByte(value and 0xFF)
-    }
-
-    private fun BufferedSource.readInt(): Int {
-        return (readByte().toInt() shl 24) or
-            (readByte().toInt() shl 16) or
-            (readByte().toInt() shl 8) or
-            readByte().toInt()
     }
 
     override fun close() {
