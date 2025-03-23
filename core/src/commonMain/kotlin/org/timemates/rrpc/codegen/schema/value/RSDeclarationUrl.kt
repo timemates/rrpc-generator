@@ -36,12 +36,12 @@ public value class RSDeclarationUrl(public val value: String) {
         public val UNKNOWN: RSDeclarationUrl = RSDeclarationUrl("unknown")
 
         public val INT32: RSDeclarationUrl = RSDeclarationUrl("int32")
-        public val INT64: RSDeclarationUrl = RSDeclarationUrl("int32")
+        public val INT64: RSDeclarationUrl = RSDeclarationUrl("int64")
 
         public val STRING: RSDeclarationUrl = RSDeclarationUrl("string")
 
         public val SINT32: RSDeclarationUrl = RSDeclarationUrl("int32")
-        public val SINT64: RSDeclarationUrl = RSDeclarationUrl("int32")
+        public val SINT64: RSDeclarationUrl = RSDeclarationUrl("int64")
 
         public val BOOL: RSDeclarationUrl = RSDeclarationUrl("bool")
 
