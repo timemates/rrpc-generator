@@ -1,12 +1,9 @@
 package org.timemates.rrpc.generator.kotlin.options
 
-import okio.Path
-import okio.Path.Companion.toPath
 import org.timemates.rrpc.codegen.configuration.GenerationOption
 import org.timemates.rrpc.codegen.configuration.GenerationOptions
 import org.timemates.rrpc.codegen.configuration.OptionTypeKind
 import org.timemates.rrpc.codegen.configuration.SingleGenerationOption
-import kotlin.enums.enumEntries
 
 public val GenerationOptions.Companion.KOTLIN_SERVER_GENERATION: SingleGenerationOption<Boolean> by lazy {
     GenerationOption.single(

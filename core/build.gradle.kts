@@ -31,7 +31,7 @@ dependencies {
 mavenPublishing {
     coordinates(
         groupId = "org.timemates.rrpc",
-        artifactId = "generator",
+        artifactId = "generator-core",
         version = System.getenv("LIB_VERSION") ?: return@mavenPublishing,
     )
 

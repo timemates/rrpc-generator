@@ -14,6 +14,7 @@ dependencies {
     // -- Generators --
     implementation(projects.core)
     implementation(projects.kotlin)
+    implementation(projects.pluginLoader)
 
     // -- JNA --
     implementation(libs.net.java.jna)

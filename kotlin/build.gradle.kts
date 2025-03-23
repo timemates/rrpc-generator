@@ -80,13 +80,16 @@ application {
     mainClass.set("org.timemates.rrpc.generator.kotlin.MainKt")
 }
 
-afterEvaluate {
-    publishing.publications {
-        create<MavenPublication>("nativeBinary") {
-            artifact(nativeBinary.get()) {
-                classifier = osClassifier
-                extension = fileExtension // or just "bin" if uncompressed
-            }
+tasks.matching { it.name.startsWith("publish") }.configureEach {
+    dependsOn("nativeCompile")
+}
+
+publishing {
+    publications.create<MavenPublication>("nativeBinary") {
+        artifact(nativeBinary.get()) {
+            classifier = osClassifier
+            extension = fileExtension // or just "bin" if uncompressed
         }
+
     }
 }

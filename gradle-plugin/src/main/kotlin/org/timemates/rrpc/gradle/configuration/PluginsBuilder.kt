@@ -1,9 +1,10 @@
 package org.timemates.rrpc.gradle.configuration
 
+import org.gradle.api.GradleException
 import org.gradle.api.Project
 import org.gradle.api.artifacts.Configuration
-import org.gradle.api.provider.MapProperty
-import org.timemates.rrpc.gradle.type.GenerationPlugin
+import org.gradle.internal.os.OperatingSystem
+import org.gradle.kotlin.dsl.create
 
 /**
  * A builder class for configuring plugins and their options for code generation.
@@ -33,10 +34,37 @@ public class PluginsBuilder(
      * }
      * ```
      */
-    public fun add(notation: Any) {
+    public fun add(notation: String) {
+        var osClassifier: String
+        var fileExtension: String
+
+        when {
+            OperatingSystem.current().isLinux -> {
+                osClassifier = "linux-x86_64"
+                fileExtension = "" // No extension for Linux
+            }
+
+            OperatingSystem.current().isWindows -> {
+                osClassifier = "windows-x86_64"
+                fileExtension = ".exe" // Windows needs .exe
+            }
+
+            OperatingSystem.current().isMacOsX -> {
+                osClassifier = "macos-aarch64"
+                fileExtension = "" // No extension for macOS
+            }
+
+            else -> throw GradleException("Unsupported OS: ${OperatingSystem.current()}")
+        }
+
         val dependency = project.dependencies.create(
             notation,
-        )
+        ) {
+            artifact {
+                extension = fileExtension
+                classifier = osClassifier
+            }
+        }
 
         project.dependencies.add(
             configuration.name,

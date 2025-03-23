@@ -4,13 +4,17 @@ import org.gradle.api.Project
 import org.gradle.api.artifacts.Configuration
 import org.gradle.api.artifacts.Dependency
 import org.gradle.api.file.ConfigurableFileCollection
+import org.gradle.api.file.RegularFileProperty
+import org.gradle.api.internal.catalog.AbstractExternalDependencyFactory
 import org.gradle.api.provider.MapProperty
 import org.gradle.api.provider.Property
-import org.gradle.kotlin.dsl.property
+import org.gradle.kotlin.dsl.mapProperty
+import org.timemates.rrpc.gradle.configuration.GenOptionsBuilder
 import org.timemates.rrpc.gradle.configuration.PluginsBuilder
 import org.timemates.rrpc.gradle.configuration.ProtoInputBuilder
-import org.timemates.rrpc.gradle.type.ProtoDependencyType
-import org.timemates.rrpc.gradle.type.ProtoInput
+import org.timemates.rrpc.gradle.configuration.type.ProtoDependencyType
+import org.timemates.rrpc.gradle.configuration.type.ProtoInput
+import kotlin.io.path.absolutePathString
 
 /**
  * The main DSL extension for configuring the rRPC Gradle plugin.
@@ -38,17 +42,18 @@ public open class RRpcExtension(
      * Inputs can include directories, archives, or external dependencies.
      */
     internal val inputFolders: ConfigurableFileCollection = objects.fileCollection()
+    internal val inputFoldersIsContext: MapProperty<String, Boolean> = objects.mapProperty<String, Boolean>()
 
     /**
      * A map of options used to configure plugin-specific behaviors.
      * Keys represent the option names, and values can be of any type, allowing for flexible configuration.
      */
-    public val options: MapProperty<String, Any> = objects.mapProperty(String::class.java, Any::class.java)
+    internal val options: MapProperty<String, Any> = objects.mapProperty(String::class.java, Any::class.java)
 
     internal val dependencyTypes: MapProperty<Dependency, ProtoDependencyType> =
         objects.mapProperty(Dependency::class.java, ProtoDependencyType::class.java)
 
-    public val outputFolder: Property<String> = objects.property(String::class.java)
+    public val outputFolder: RegularFileProperty = objects.fileProperty()
 
     /**
      * Configures the protocol buffer inputs for code generation.
@@ -75,8 +80,13 @@ public open class RRpcExtension(
                     if (type == ProtoDependencyType.CONTEXT) contextDeps.name else sourceDeps.name,
                     dependency
                 )
-            } else if (protoInput is ProtoInput.Directory)
+            } else if (protoInput is ProtoInput.Directory) {
                 inputFolders.from(protoInput.directory)
+                inputFoldersIsContext.put(
+                    protoInput.directory.absolutePathString(),
+                    type == ProtoDependencyType.CONTEXT
+                )
+            }
         }.action()
     }
 
@@ -87,13 +97,7 @@ public open class RRpcExtension(
      * Example usage:
      * ```kotlin
      * plugins {
-     *     kotlin {
-     *         output = "build/generated/kotlin"
-     *         clientGeneration = true
-     *     }
-     *     external("com.example:typescript-plugin:1.0.0") {
-     *         put("customOption", "value")
-     *     }
+     *     add("com.example:typescript-plugin:1.0.0")
      * }
      * ```
      */
@@ -103,11 +107,23 @@ public open class RRpcExtension(
     }
 
     /**
-     * Determines whether package cycle checks are permitted during generation.
+     * Configures generation options.
      *
-     * By default, this is set to `false`, which raises an error if package cycles are detected.
-     * Setting it to `true` will allow package cycles without error.
+     * @param action A configuration block using the `GenOptionsBuilder` DSL. Example usage:
+     * ```kotlin
+     * options {
+     *  /**
+     *   * Determines whether package cycle checks are permitted during generation.
+     *   *
+     *   * By default, this is set to `false`, which raises an error if package cycles are detected.
+     *   * Setting it to `true` will allow package cycles without error.
+     *   */
+     *  append("permit_package_cycles", true)
+     * }
+     * ```
      */
-    public val permitPackageCycles: Property<Boolean> = objects.property<Boolean>()
-        .convention(false)
+    @RRpcGradlePluginDsl
+    public fun options(action: GenOptionsBuilder.() -> Unit) {
+        GenOptionsBuilder(options).action()
+    }
 }

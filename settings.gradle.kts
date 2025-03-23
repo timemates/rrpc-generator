@@ -24,4 +24,4 @@ rootProject.name = "rrpc-generator"
 includeBuild("build-conventions")
 
 include(":core", ":kotlin")
-include(":cli", ":gradle-plugin")
+include(":plugin-loader", ":cli", ":gradle-plugin")

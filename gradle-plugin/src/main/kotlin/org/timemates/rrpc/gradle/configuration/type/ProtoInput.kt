@@ -1,4 +1,4 @@
-package org.timemates.rrpc.gradle.type
+package org.timemates.rrpc.gradle.configuration.type
 
 import java.nio.file.Path
 

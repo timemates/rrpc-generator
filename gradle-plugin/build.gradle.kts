@@ -1,6 +1,7 @@
 plugins {
     `kotlin-dsl`
     alias(libs.plugins.gradle.publish)
+    id(libs.plugins.conventions.library.get().pluginId)
 }
 
 group = "org.timemates.rrpc"
@@ -17,7 +18,10 @@ dependencies {
 
     // -- Project --
     implementation(projects.core)
-    implementation(projects.cli)
+    implementation(projects.pluginLoader)
+
+    // -- Coroutines --
+    implementation(libs.kotlinx.coroutines)
 
     // -- Libraries --
     implementation(libs.kotlin.plugin)
@@ -26,8 +30,8 @@ dependencies {
 
 
 gradlePlugin {
-    website = "https://github.com/rrpc"
-    vcsUrl = "https://github.com/rrpc"
+    website = "https://github.com/rrpc-generator"
+    vcsUrl = "https://github.com/rrpc-generator"
 
     plugins {
         create("rrpc-plugin") {
@@ -41,25 +45,15 @@ gradlePlugin {
     }
 }
 
-publishing {
-    repositories {
-        if (project.hasProperty("publish-reposilite")) {
-            maven {
-                val isDev = version.toString().contains("dev")
+mavenPublishing {
+    coordinates(
+        groupId = "org.timemates.rrpc",
+        artifactId = "gradle-plugin",
+        version = System.getenv("LIB_VERSION") ?: return@mavenPublishing,
+    )
 
-                name = if (isDev) "timeMatesDev" else "timeMatesReleases"
-                url = if (isDev) uri("https://maven.timemates.org/dev") else uri("https://maven.timemates.org/releases")
-
-                credentials {
-                    username = System.getenv("REPOSILITE_USER")
-                    password = System.getenv("REPOSILITE_SECRET")
-                }
-            }
-        } else {
-            logger.log(
-                LogLevel.INFO,
-                "Custom plugin publishing is disabled: publish-locally or publish-reposilite parameter should be used to specify publication destination."
-            )
-        }
+    pom {
+        name.set("RRpc Generator Gradle Plugin")
+        description.set("Code-generation library for RRpc servers and clients.")
     }
 }

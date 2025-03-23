@@ -25,6 +25,8 @@ public class CodeGenerator(
     public fun generateCode(
         options: GenerationOptions,
     ): PluginSignal.RequestStatusChange = runBlocking {
+        options[GenerationOptions.GEN_OUTPUT] ?: error("gen_output option is required")
+
         val schemaLoader = SchemaLoader(fileSystem)
         schemaLoader.permitPackageCycles = options.isPackageCyclesPermitted
 
@@ -40,6 +42,10 @@ public class CodeGenerator(
 
         val outputText = buildString {
             plugins.forEach { plugin ->
+                val options = options.builder {
+                    set(GenerationOptions.GEN_OUTPUT, options[GenerationOptions.GEN_OUTPUT]!!.toString() + "/${plugin.name}")
+                }
+
                 when (val result = plugin.generateCode(options, files)) {
                     is PluginSignal.RequestStatusChange.Failed -> append("(!) ${plugin.name}: ${result.message}")
                     is PluginSignal.RequestStatusChange.Finished -> append("\t(OK) ${plugin.name}: ${result.message}")

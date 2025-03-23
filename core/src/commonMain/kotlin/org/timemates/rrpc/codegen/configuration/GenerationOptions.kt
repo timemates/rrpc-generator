@@ -64,7 +64,9 @@ public value class GenerationOptions(private val map: Map<String, Any>) {
      */
     @Suppress("UNCHECKED_CAST")
     public operator fun <T> get(option: SingleGenerationOption<T>): T? {
-        return map[option.name]?.let { option.valueFactory(it.toString()) }
+        return map[option.name]?.let {
+            option.valueFactory((if (it is List<*>) it.firstOrNull()?.toString() else it.toString()) ?: return null)
+        }
     }
 
     /**
@@ -75,15 +77,17 @@ public value class GenerationOptions(private val map: Map<String, Any>) {
      */
     @Suppress("UNCHECKED_CAST")
     public operator fun <T> get(option: RepeatableGenerationOption<T>): List<T>? {
-        val list = map[option.name] as? List<String> ?: return null
+        val list = map[option.name] as? List<String> ?: run {
+            return map[option.name]?.let { listOf(option.valueFactory(it.toString())) }
+        }
         return list.map { option.valueFactory(it) }
     }
 
     public val raw: Map<String, Any> get() = map.toMap()
 
-    public class Builder {
-        private val map: MutableMap<String, Any> = mutableMapOf()
+    public fun builder(block: Builder.() -> Unit): GenerationOptions = Builder(raw.toMutableMap()).apply(block).build()
 
+    public class Builder(private val map: MutableMap<String, Any> = mutableMapOf()) {
         public operator fun <T : Any> set(option: SingleGenerationOption<T>, value: String) {
             map[option.name] = value
         }
@@ -159,25 +163,52 @@ public sealed interface GenerationOption {
 
 @Serializable
 public sealed interface OptionTypeKind {
+    public val readableName: String
+
     @Serializable
-    public data object Text : OptionTypeKind
+    public data object Text : OptionTypeKind {
+        override val readableName: String
+            get() = "Text"
+    }
+
     @Serializable
-    public data object Boolean : OptionTypeKind
+    public data object Boolean : OptionTypeKind {
+        override val readableName: String
+            get() = "Boolean"
+    }
     @Serializable
     public sealed interface Number : OptionTypeKind {
         @Serializable
-        public data object Int : Number
+        public data object Int : Number {
+            override val readableName: String
+                get() = "Int"
+        }
         @Serializable
-        public data object Long : Number
+        public data object Long : Number {
+            override val readableName: String
+                get() = "Long"
+        }
         @Serializable
-        public data object Float : Number
+        public data object Float : Number {
+            override val readableName: String
+                get() = "Float"
+        }
         @Serializable
-        public data object Double : Number
+        public data object Double : Number {
+            override val readableName: String
+                get() = "Double"
+        }
     }
     @Serializable
-    public data object Path : OptionTypeKind
+    public data object Path : OptionTypeKind {
+        override val readableName: String
+            get() = "Path"
+    }
     @Serializable
-    public data class Choice(@ProtoNumber(1) public val variants: List<String>) : OptionTypeKind
+    public data class Choice(@ProtoNumber(1) public val variants: List<String>) : OptionTypeKind {
+        override val readableName: String
+            get() = "Choice (${variants.joinToString(", ")})"
+    }
 }
 
 @Suppress("unused")

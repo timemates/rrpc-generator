@@ -9,13 +9,13 @@ import okio.FileSystem
 import org.timemates.rrpc.codegen.CodeGenerator
 import org.timemates.rrpc.codegen.configuration.GenerationOptions
 import org.timemates.rrpc.codegen.configuration.OptionTypeKind
+import org.timemates.rrpc.codegen.plugin.PluginService
 import org.timemates.rrpc.codegen.plugin.data.OptionDescriptor
 import kotlin.io.path.pathString
 
-class GenerateCommand(
-    private val plugins: List<Plugin>,
+internal class GenerateCommand(
+    private val plugins: List<PluginService>,
     options: List<OptionDescriptor>,
-    private val scope: CoroutineScope,
 ) : SuspendingCliktCommand("rrgcli") {
     private val registeredOptions = options
         .distinctBy { it.name }
@@ -32,10 +32,10 @@ class GenerateCommand(
         registerOption(option("--plugin").multiple())
     }
 
-    val genOut by option("--gen_output", help = GenerationOptions.GEN_OUTPUT.description!!).path().required()
+    val genOut by option("--gen_output", help = GenerationOptions.GEN_OUTPUT.description).path().required()
 
     override suspend fun run() {
-        outputPath = genOut.pathString
+        RRpcGeneratorMain.outputPath = genOut.pathString
 
         val genOptions = GenerationOptions.create {
             registeredOptions.forEach { (definition, raw) ->
@@ -56,7 +56,7 @@ class GenerateCommand(
         }
 
         println(
-            CodeGenerator(FileSystem.SYSTEM, plugins = plugins.map { ProcessAsPluginService(it) })
+            CodeGenerator(FileSystem.SYSTEM, plugins = plugins)
                 .generateCode(options = genOptions).message.trimIndent()
         )
     }

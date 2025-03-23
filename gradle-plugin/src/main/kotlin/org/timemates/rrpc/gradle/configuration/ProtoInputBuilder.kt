@@ -1,7 +1,7 @@
 package org.timemates.rrpc.gradle.configuration
 
-import org.timemates.rrpc.gradle.type.ProtoDependencyType
-import org.timemates.rrpc.gradle.type.ProtoInput
+import org.timemates.rrpc.gradle.configuration.type.ProtoDependencyType
+import org.timemates.rrpc.gradle.configuration.type.ProtoInput
 import java.io.File
 import java.nio.file.Path
 
@@ -27,7 +27,7 @@ public class ProtoInputBuilder(private val base: File, private val onAdded: (Pro
      * This type of dependency is used to generate code.
      */
     public fun source(block: SelectBuilder.() -> Unit) {
-        SelectBuilder(base) { protoInput -> onAdded(protoInput, ProtoDependencyType.CONTEXT) }.apply(block)
+        SelectBuilder(base) { protoInput -> onAdded(protoInput, ProtoDependencyType.SOURCE) }.apply(block)
     }
 
     public class SelectBuilder(private val base: File, private val onAdded: (ProtoInput) -> Unit, ) {
@@ -37,6 +37,8 @@ public class ProtoInputBuilder(private val base: File, private val onAdded: (Pro
          * @param file A file representing the directory to be included as a Proto input source.
          */
         public fun directory(file: File) {
+            if (!file.exists()) throw IllegalArgumentException("Directory does not exist at ${file.absolutePath}, but expected to.")
+            if (!file.isDirectory) throw IllegalArgumentException("Expected a directory, but got file at ${file.absolutePath}")
             onAdded(ProtoInput.Directory(file.toPath()))
         }
 
