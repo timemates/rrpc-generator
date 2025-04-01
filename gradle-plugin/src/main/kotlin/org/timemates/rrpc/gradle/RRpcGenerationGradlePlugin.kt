@@ -57,6 +57,8 @@ public class RRpcGenerationGradlePlugin : Plugin<Project> {
         target.tasks.register<GenerateRRpcCodeTask>("generateRRpcCode") {
             inputFolders.from(extension.inputFolders)
             inputFoldersIsContext.set(extension.inputFoldersIsContext)
+            this.permitPackageCycles.set(extension.permitPackageCycles)
+            this.options.putAll(extension.pluginOptions)
             this.contextProtoDeps.from(contextProtoDeps.incoming.files)
             this.sourceProtoDeps.from(sourceProtoDeps.incoming.files)
             this.rrpcPluginsDeps.from(rrpcPluginsDeps.incoming.files)
@@ -71,6 +73,7 @@ public class RRpcGenerationGradlePlugin : Plugin<Project> {
 
         target.tasks.register<RRpcGeneratorHelpTask>("rrpcGeneratorHelp") {
             this.rrpcPluginsDeps.from(rrpcPluginsDeps.incoming.files)
+            this.options.set(extension.pluginOptions)
 
             doFirst {
                 rrpcPluginsDeps.resolve()

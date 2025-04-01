@@ -31,6 +31,12 @@ public value class RSOptions(
     public operator fun contains(fieldUrl: RSTypeMemberUrl): Boolean {
         return get(fieldUrl) != null
     }
+
+    public fun withFilteredFrom(collection: Collection<RSTypeMemberUrl>): RSOptions {
+        return RSOptions(list.filterNot { it.fieldUrl in collection })
+    }
 }
 
 public val RSOptions.isDeprecated: Boolean get() = (this[RSOption.DEPRECATED]?.value as? RSOption.Value.Raw)?.string?.toBooleanStrictOrNull() ?: false
+public val RSOptions.isRetentionSource: Boolean get() = (this[RSOption.RETENTION]?.value as? RSOption.Value.Raw)?.string == "RETENTION_SOURCE"
+public val RSOptions.isRetentionRuntime: Boolean get() = (this[RSOption.RETENTION]?.value as? RSOption.Value.Raw)?.string != "RETENTION_SOURCE"

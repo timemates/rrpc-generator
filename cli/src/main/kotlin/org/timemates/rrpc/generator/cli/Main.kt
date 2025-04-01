@@ -1,62 +1,60 @@
 package org.timemates.rrpc.generator.cli
 
 import com.github.ajalt.clikt.command.main
-import kotlinx.coroutines.*
-import org.timemates.rrpc.codegen.CodeGenerator
-import org.timemates.rrpc.codegen.plugin.data.toOptionDescriptor
-import org.timemates.rrpc.generator.kotlin.KotlinPluginService
+import com.github.ajalt.clikt.core.findOrSetObject
+import com.github.ajalt.clikt.core.subcommands
+import com.github.ajalt.clikt.parsers.CommandLineParser
+import kotlinx.coroutines.CoroutineExceptionHandler
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.runBlocking
+import org.timemates.rrpc.codegen.logging.LocalRLogger
+import org.timemates.rrpc.generator.cli.commands.GenerateCommand
 import org.timemates.rrpc.generator.plugin.loader.ProcessPluginService
-import kotlin.properties.Delegates
 import kotlin.system.exitProcess
 
 
-public object RRpcGeneratorMain {
-    /**
-     * List of options for functionality that is builtin in the rrgcli by default,
-     * such as Kotlin Code Generation.
-     */
-    private val BUILTIN_OPTIONS =
-        (CodeGenerator.BASE_OPTIONS.map { it.toOptionDescriptor() } + KotlinPluginService.options)
-
-    private val exceptionHandler = CoroutineExceptionHandler { _, exception ->
-        System.err.println("rrgcli returned error: ${exception.message}")
-        System.err.flush()
-        exitProcess(1)
-    }
-
-    internal var outputPath: String by Delegates.notNull()
-
-    /**
-     * The `rrgcli` entry.
-     *
-     * For usage documentation, please refer to the [official documentation](https://rrpc.timemates.org/codegen-cli.html).
-     */
-    @JvmStatic
-    public fun main(args: Array<String>): Unit = runBlocking(exceptionHandler) {
-        // Phase 1: Load in the specified plugins
-        // accepts both --plugin=X and --plugin="X"
-        // also, may include commands to be run, like "java -jar ..."
-        val plugins = args.filter { it.startsWith("--plugin=") }
-            .map { it.replace("--plugin=", "").replace("\"", "") }
-            .map { callable ->
-                async(Dispatchers.IO) {
-                    ProcessPluginService.load(callable.split(" "))
-                }
-            }.awaitAll()
-
-        // Phase 2: ask plugin about its options
-        val pluginsOptions = plugins.flatMap { it.options }
+private val exceptionHandler = CoroutineExceptionHandler { _, exception ->
+    System.err.println("rrgcli returned error: ${exception.message}")
+    System.err.flush()
+    exitProcess(1)
+}
 
 
-        // Phase 3: Start generation command with received custom options
-        GenerateCommand(plugins, BUILTIN_OPTIONS + pluginsOptions).main(args)
+/**
+ * The `rrgcli` entry.
+ *
+ * For usage documentation, please refer to the [official documentation](https://rrpc.timemates.org/codegen-cli.html).
+ */
+fun main(args: Array<String>): Unit = runBlocking(exceptionHandler) {
+    val ignoreErrors = args.contains("--ignore-errors")
 
-        plugins.forEach { plugin ->
-            plugin.finish()
+    val logger = LocalRLogger(
+        header = "rrgcli",
+        includeDebug = args.contains("--debug"),
+        onError = {
+            if (!ignoreErrors)
+                exitProcess(1)
+            else println("rrgcli: Generator is configured to ignore errors, continuing.")
         }
+    )
 
-        System.out.flush()
+    val plugins = parsePlugins(args).map { pluginArgs ->
+        async(Dispatchers.IO) {
+            ProcessPluginService.load(pluginArgs, logger)
+        }
+    }.awaitAll()
 
-        exitProcess(0)
-    }
+    GenerateCommand(plugins).main(args)
+
+    System.out.flush()
+
+    exitProcess(0)
+}
+
+private fun parsePlugins(args: Array<String>): List<List<String>> {
+    return args.filter { it.startsWith("--plugin=") }
+        .map { it.removePrefix("--plugin=").trim() }
+        .map { it.split(" ").filter { part -> part.isNotBlank() } }
 }

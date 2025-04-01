@@ -4,6 +4,7 @@ plugins {
     id(libs.plugins.conventions.jvm.library.get().pluginId)
     application
     alias(libs.plugins.graalvm.native)
+    alias(libs.plugins.shadowJar)
 }
 
 kotlin {
@@ -80,16 +81,10 @@ application {
     mainClass.set("org.timemates.rrpc.generator.kotlin.MainKt")
 }
 
-tasks.matching { it.name.startsWith("publish") }.configureEach {
-    dependsOn("nativeCompile")
+tasks.shadowJar {
+    archiveClassifier.set("") // Ensures the main artifact is the shadow JAR
 }
 
-publishing {
-    publications.create<MavenPublication>("nativeBinary") {
-        artifact(nativeBinary.get()) {
-            classifier = osClassifier
-            extension = fileExtension // or just "bin" if uncompressed
-        }
-
-    }
+tasks.matching { it.name.startsWith("publish") }.configureEach {
+    dependsOn("shadowJar")
 }

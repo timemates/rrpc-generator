@@ -7,7 +7,7 @@ import org.timemates.rrpc.codegen.schema.value.LocationPath
 import org.timemates.rrpc.codegen.schema.value.RSPackageName
 
 @Serializable
-public class RSFile(
+public data class RSFile(
     /**
      * Name of a source file.
      */
@@ -16,7 +16,13 @@ public class RSFile(
 
     /**
      * Package name specified in the proto file. It should not be accessed to generate
-     * platform-specific code, but through `platformPackageName(language)`.
+     * platform-specific code, but through `platformPackageName(language)`. Or you may use:
+     * - [javaPackage]
+     * - [kotlinPackage]
+     * - [csharpNamespace]
+     * - [rubyPackage]
+     * - [phpNamespace]
+     * - [goPackage]
      */
     @ProtoNumber(2)
     @NonPlatformSpecificAccess
@@ -26,7 +32,7 @@ public class RSFile(
      * File-level options of the file.
      */
     @ProtoNumber(3)
-    public val options: RSOptions  = RSOptions.EMPTY,
+    public val options: RSOptions = RSOptions.EMPTY,
 
     /**
      * The services that are defined in the `.proto` file.
@@ -57,6 +63,10 @@ public class RSFile(
 ) : RSNode {
     public companion object {
         public val JAVA_PACKAGE: RSTypeMemberUrl = RSTypeMemberUrl(RSOptions.FILE_OPTIONS, "java_package")
+        public val GO_PACKAGE: RSTypeMemberUrl = RSTypeMemberUrl(RSOptions.FILE_OPTIONS, "go_package")
+        public val PHP_NAMESPACE: RSTypeMemberUrl = RSTypeMemberUrl(RSOptions.FILE_OPTIONS, "php_namespace")
+        public val RUBY_PACKAGE: RSTypeMemberUrl = RSTypeMemberUrl(RSOptions.FILE_OPTIONS, "ruby_package")
+        public val CSHARP_NAMESPACE: RSTypeMemberUrl = RSTypeMemberUrl(RSOptions.FILE_OPTIONS, "csharp_namespace")
     }
 
     /**
@@ -67,9 +77,11 @@ public class RSFile(
     public fun platformPackageName(language: Language): RSPackageName? {
         return when (language) {
             Language.JAVA, Language.KOTLIN -> (options[JAVA_PACKAGE]?.value as? RSOption.Value.Raw)?.string
-            Language.PHP -> TODO()
-            Language.C_SHARP -> TODO()
-            Language.PYTHON -> TODO()
+            Language.PHP -> (options[PHP_NAMESPACE]?.value as? RSOption.Value.Raw)?.string
+            Language.C_SHARP -> (options[CSHARP_NAMESPACE]?.value as? RSOption.Value.Raw)?.string
+            Language.PYTHON -> null
+            Language.GO -> (options[GO_PACKAGE]?.value as? RSOption.Value.Raw)?.string
+            Language.RUBY -> (options[RUBY_PACKAGE]?.value as? RSOption.Value.Raw)?.string
         }?.let(::RSPackageName) ?: packageName
     }
 
@@ -87,5 +99,13 @@ public class RSFile(
     }
 }
 
-public fun RSFile.javaPackage(): RSPackageName? = platformPackageName(Language.JAVA)
-public fun RSFile.kotlinPackage(): RSPackageName? = platformPackageName(Language.KOTLIN)
+public val RSFile.javaPackage: RSPackageName? get() = platformPackageName(Language.JAVA)
+public val RSFile.kotlinPackage: RSPackageName? get() = platformPackageName(Language.KOTLIN)
+public val RSFile.csharpNamespace: RSPackageName? get() = platformPackageName(Language.C_SHARP)
+public val RSFile.phpNamespace: RSPackageName? get() = platformPackageName(Language.PHP)
+public val RSFile.goPackage: RSPackageName? get() = platformPackageName(Language.GO)
+public val RSFile.rubyPackage: RSPackageName? get() = platformPackageName(Language.RUBY)
+
+
+public fun RSFile.findServiceOrNull(name: String): RSService? = services.firstOrNull { service -> service.name == name }
+public fun RSFile.findService(name: String): RSService = findServiceOrNull(name) ?: error("Can't find service named '$name'.")

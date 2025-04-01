@@ -29,7 +29,7 @@ public object ClientRpcGenerator {
                 error("Client-only streaming is not supported.")
         }
 
-        val rpcName = rpc.kotlinName()
+        val rpcName = rpc.kotlinName
         val rpcRequestType = rpc.requestType.type.asClassName(schema)
         val rpcReturnType = rpc.responseType.type.asClassName(schema)
 
@@ -80,7 +80,7 @@ public object ClientRpcGenerator {
             }
         }
 
-        return FunSpec.builder(rpc.kotlinName())
+        return FunSpec.builder(rpc.kotlinName)
             .deprecated(rpc.options.isDeprecated)
             .apply {
                 if (rpc.requestType.isStreaming) {

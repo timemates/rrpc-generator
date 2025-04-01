@@ -1,21 +1,45 @@
 package org.timemates.rrpc.codegen.plugin
 
+import kotlinx.serialization.Serializable
 import okio.BufferedSink
 import okio.BufferedSource
 import org.timemates.rrpc.codegen.configuration.GenerationOptions
+import org.timemates.rrpc.codegen.logging.PluginRLogger
+import org.timemates.rrpc.codegen.logging.RLogger
 import org.timemates.rrpc.codegen.plugin.data.GeneratorSignal
 import org.timemates.rrpc.codegen.plugin.data.OptionDescriptor
 import org.timemates.rrpc.codegen.plugin.data.PluginMessage
-import org.timemates.rrpc.codegen.plugin.data.PluginSignal
 import org.timemates.rrpc.codegen.plugin.data.PluginSignal.*
 import org.timemates.rrpc.codegen.plugin.data.PluginSignal.SendMetaInformation.*
 import org.timemates.rrpc.codegen.plugin.data.SignalId
-import org.timemates.rrpc.codegen.schema.RSFile
 import kotlin.system.exitProcess
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
 public interface PluginService {
+    /**
+     * Retrieves a list of options supported by the plugin.
+     *
+     * This function is triggered when the generator sends a `FetchOptionsList` signal. The
+     * plugin should return a list of `OptionDescriptor` objects, each representing a
+     * configurable option available for this plugin.
+     *
+     * @return A list of `OptionDescriptor` representing the plugin's configurable options.
+     */
+    public val options: List<OptionDescriptor>
+
+    /**
+     * Generator's name
+     */
+    public val name: String
+
+    /**
+     * Retrieves description of the plugin.
+     *
+     * @return A String with detailed information about the Plugin and its functionality.
+     */
+    public val description: String
+
     public companion object {
         /**
          * Main entry point for the plugin service execution.
@@ -49,89 +73,80 @@ public interface PluginService {
             val arguments = Arguments(args.toTypedArray())
             val communication = PluginCommunication(input, output)
 
-            val initSignal = communication.receiveOr<GeneratorSignal.FetchMetadata> {
-                exitProcess(0)
+            val logger = PluginRLogger(communication)
+
+            val initCommand = communication.receive().takeIf { it.signal is GeneratorSignal.FetchMetadata } ?: exitProcess(0)
+
+            val role = when (service) {
+                is GenerationPluginService -> PluginRole.GENERATOR
+                is ProcessorPluginService -> PluginRole.PROCESS
+                else -> error("Unknown type of plugin: ${service.javaClass.canonicalName}")
             }
 
             communication.send(
                 PluginMessage.create {
-                    id = SignalId(Uuid.random().toHexString())
+                    id = initCommand.id
                     signal = SendMetaInformation(
                         MetaInformation(
                             options = service.options,
                             name = service.name,
                             description = service.description,
+                            role = role,
                         )
                     )
                 }
             )
 
-            val sendInputSignal = communication.receiveOr<GeneratorSignal.SendInput> {
-                exitProcess(0)
-            }
+            val command = communication.receive()
+
+            val incomingSignal = command.signal as? GeneratorSignal.SendInput ?: error("Invalid command for plugin ${service.name}.")
 
             communication.send(
                 PluginMessage.create {
                     id = SignalId(Uuid.random().toHexString())
-                    signal = service.generateCode(
-                        options = GenerationOptions.create {
-                            service.options.forEach { descriptor ->
-                                if (descriptor.isRepeatable) {
-                                    arguments.getNamedList(descriptor.name).forEach {
-                                        rawAppend(descriptor.name, it)
-                                    }
-                                } else {
-                                    arguments.getNamedOrNull(descriptor.name)?.let {
-                                        rawSet(descriptor.name, it)
-                                    }
-                                }
-                            }
-                            set(GenerationOptions.GEN_OUTPUT, sendInputSignal.outputPath)
-                        },
-                        files = sendInputSignal.files
-                    )
+                    signal = when (role) {
+                        PluginRole.GENERATOR -> {
+                            service as? GenerationPluginService ?: error("Role of plugin is not a generator.")
+
+                            service.generateCode(
+                                options = incomingSignal.options,
+                                files = incomingSignal.files,
+                                logger = logger,
+                            )
+
+                            CodeGenerated
+                        }
+                        PluginRole.PROCESS -> {
+                            service as? ProcessorPluginService ?: error("Role of plugin is not a processor.")
+
+                            ChangedInput(
+                                files = service.process(
+                                    options = incomingSignal.options,
+                                    files = incomingSignal.files,
+                                    logger = logger,
+                                ),
+                            )
+                        }
+                    }
                 }
             )
         }
     }
 
-    /**
-     * Generates code based on the provided input files.
-     *
-     * This function is triggered when the generator sends a `SendInput` signal containing
-     * a list of files (`RSFile`) to process. The plugin is responsible for handling these
-     * files and returning a signal indicating the status of the request.
-     *
-     * @param files The list of files to be processed by the plugin.
-     * @return A `PluginSignal.RequestStatusChange` indicating the status of the generation process.
-     */
-    public suspend fun generateCode(
-        options: GenerationOptions,
-        files: List<RSFile>,
-    ): RequestStatusChange
+    @Serializable
+    public enum class PluginRole {
+        /**
+         * Type of the plugin that is used to generate code.
+         * Effectively means that the only method will be triggered is [generateCode].
+         */
+        GENERATOR,
 
-    /**
-     * Retrieves a list of options supported by the plugin.
-     *
-     * This function is triggered when the generator sends a `FetchOptionsList` signal. The
-     * plugin should return a list of `OptionDescriptor` objects, each representing a
-     * configurable option available for this plugin.
-     *
-     * @return A list of `OptionDescriptor` representing the plugin's configurable options.
-     */
-    public val options: List<OptionDescriptor>
-
-    /**
-     * Generator's name
-     */
-    public val name: String
-
-    /**
-     * Retrieves description of the plugin.
-     *
-     * @return A String with detailed information about the Plugin and its functionality.
-     */
-    public val description: String
+        /**
+         * Type of the plugin that is used to modify the input.
+         * Effectively means that the only method will be triggered is [modify].
+         */
+        PROCESS
+    }
 }
 
 @JvmInline

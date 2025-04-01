@@ -5,10 +5,13 @@ import com.squareup.wire.schema.SchemaLoader
 import kotlinx.coroutines.runBlocking
 import okio.FileSystem
 import org.timemates.rrpc.codegen.configuration.*
+import org.timemates.rrpc.codegen.logging.RLogger
+import org.timemates.rrpc.codegen.plugin.GenerationPluginService
 import org.timemates.rrpc.codegen.plugin.PluginService
+import org.timemates.rrpc.codegen.plugin.ProcessorPluginService
 import org.timemates.rrpc.codegen.plugin.data.OptionDescriptor
-import org.timemates.rrpc.codegen.plugin.data.PluginSignal
 import org.timemates.rrpc.codegen.plugin.data.toOptionDescriptor
+import org.timemates.rrpc.codegen.schema.asRSResolver
 
 public class CodeGenerator(
     private val fileSystem: FileSystem = FileSystem.SYSTEM,
@@ -22,9 +25,10 @@ public class CodeGenerator(
         )
     }
 
-    public fun generateCode(
+    public suspend fun generateCode(
         options: GenerationOptions,
-    ): PluginSignal.RequestStatusChange = runBlocking {
+        loggerFactory: (pluginName: String) -> RLogger,
+    ) {
         options[GenerationOptions.GEN_OUTPUT] ?: error("gen_output option is required")
 
         val schemaLoader = SchemaLoader(fileSystem)
@@ -40,20 +44,45 @@ public class CodeGenerator(
             .resolveAvailableFiles()
             .toList()
 
-        val outputText = buildString {
-            plugins.forEach { plugin ->
-                val options = options.builder {
-                    set(GenerationOptions.GEN_OUTPUT, options[GenerationOptions.GEN_OUTPUT]!!.toString() + "/${plugin.name}")
+        plugins.fold(files) { files, plugin ->
+            val pluginOptionPrefix = "${plugin.name}:"
+
+            // scope options for plugin-specific and general that might be useful for generator
+            val pluginOptions = GenerationOptions.create {
+                options.raw.forEach { key, value ->
+                    if (key.startsWith(pluginOptionPrefix)) {
+                        if (value is Collection<*>) {
+                            value.forEach { value ->
+                                rawAppend(key.substringAfter(pluginOptionPrefix), value.toString())
+                            }
+                        } else {
+                            rawSet(key.substringAfter(pluginOptionPrefix), value.toString())
+                        }
+                    }
                 }
 
-                when (val result = plugin.generateCode(options, files)) {
-                    is PluginSignal.RequestStatusChange.Failed -> append("(!) ${plugin.name}: ${result.message}")
-                    is PluginSignal.RequestStatusChange.Finished -> append("\t(OK) ${plugin.name}: ${result.message}")
+                // might be useful for generators, like for go, because it must fail if package cycles are permitted
+                set(GenerationOptions.PERMIT_PACKAGE_CYCLES, options[GenerationOptions.PERMIT_PACKAGE_CYCLES]?.toString() ?: "false")
+                set(GenerationOptions.GEN_OUTPUT, options[GenerationOptions.GEN_OUTPUT]!!.toString() + "/${plugin.name}")
+            }
+
+            val logger = loggerFactory(plugin.name)
+
+            return@fold when (plugin) {
+                is ProcessorPluginService -> plugin.process(
+                    options = pluginOptions,
+                    files = files,
+                    logger = logger,
+                )
+
+                is GenerationPluginService -> {
+                    plugin.generateCode(pluginOptions, files, logger)
+                    files
                 }
+
+                else -> error("Unexpected type of plugin ${plugin.javaClass.canonicalName}")
             }
         }
-
-        PluginSignal.RequestStatusChange.Finished(outputText)
     }
 
     public val options: List<OptionDescriptor> =

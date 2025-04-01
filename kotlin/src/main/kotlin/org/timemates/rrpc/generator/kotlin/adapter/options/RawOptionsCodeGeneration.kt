@@ -6,6 +6,7 @@ import org.timemates.rrpc.codegen.exception.UnresolvableFileException
 import org.timemates.rrpc.codegen.exception.UnresolvableReferenceException
 import org.timemates.rrpc.codegen.schema.RSOptions
 import org.timemates.rrpc.codegen.schema.RSResolver
+import org.timemates.rrpc.codegen.schema.isRetentionSource
 import org.timemates.rrpc.codegen.schema.kotlinPackage
 import org.timemates.rrpc.codegen.schema.value.RSDeclarationUrl
 import org.timemates.rrpc.codegen.schema.value.RSPackageName
@@ -21,9 +22,19 @@ internal object RawOptionsCodeGeneration {
         optionsType: RSDeclarationUrl,
         context: KGFileContext,
     ): CodeBlock = buildCodeBlock {
+        val options = options.list.mapNotNull { option ->
+            val field = resolver.resolveField(option.fieldUrl)
+                ?: throw UnresolvableReferenceException(option.fieldUrl, context.location)
+
+            if (field.options.isRetentionSource)
+                return@mapNotNull null
+
+            option to field
+        }.associate { it }
+
         add("%T(", LibClassNames.OptionsWithValue)
 
-        if (options.list.isEmpty()) {
+        if (options.isEmpty()) {
             add("emptyMap())")
             return@buildCodeBlock
         }
@@ -31,9 +42,7 @@ internal object RawOptionsCodeGeneration {
         newline()
         indent()
 
-        options.list.forEach { option ->
-            val field = resolver.resolveField(option.fieldUrl)
-                ?: throw UnresolvableReferenceException(option.fieldUrl, context.location)
+        options.forEach { (option, field) ->
             val type = field.typeUrl
 
             context.addImport(
@@ -41,7 +50,7 @@ internal object RawOptionsCodeGeneration {
                     packageName = (
                         resolver.resolveFileAt(field.location)
                             ?: throw UnresolvableFileException(field.location)
-                        ).kotlinPackage() ?: RSPackageName.EMPTY,
+                        ).kotlinPackage ?: RSPackageName.EMPTY,
                     simpleNames = listOf(field.name),
                 )
             )

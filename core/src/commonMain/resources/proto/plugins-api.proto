@@ -1,6 +1,7 @@
 syntax = "proto3";
 
 message PluginSignal {
+  option deprecated = true;
   string id = 1;
   oneof intent {
     Intent.SendUserSchema sendSchema = 2;

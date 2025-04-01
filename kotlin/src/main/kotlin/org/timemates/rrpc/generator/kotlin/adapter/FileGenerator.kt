@@ -20,7 +20,7 @@ internal object FileGenerator {
         clientGeneration: Boolean,
         serverGeneration: Boolean,
     ): FileSpec {
-        val fileName = ClassName(file.kotlinPackage()?.value ?: "", file.name)
+        val fileName = ClassName(file.kotlinPackage?.value ?: "", file.name)
 
         return FileSpec.builder(fileName).apply {
             val context = KGFileContext(this, file.location)

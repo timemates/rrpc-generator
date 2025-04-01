@@ -17,4 +17,4 @@ public data class RSOneOf(
     val options: RSOptions = RSOptions.EMPTY,
     @ProtoNumber(5)
     val location: RSElementLocation,
-)
+) : RSNode

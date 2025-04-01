@@ -33,8 +33,6 @@ public object OptionValueGenerator {
         value: RSOption.Value.Raw,
     ): String {
         val value = value.string
-
-
         return when (protoType) {
             RSDeclarationUrl.STRING, RSDeclarationUrl.STRING_VALUE -> "\"${value}\""
             RSDeclarationUrl.BOOL -> value
@@ -104,7 +102,7 @@ public object OptionValueGenerator {
         value: RSOption.Value?,
         schema: RSResolver,
     ): String {
-        require(typeUrl != RSDeclarationUrl.ANY) { "google.protobuf.Any type is not supported." }
+        require(typeUrl != RSDeclarationUrl.ANY) { "google.protobuf.Any type is not supported as option type." }
         val type = schema.resolveType(typeUrl)
         val className = typeUrl.asClassName(schema)
 

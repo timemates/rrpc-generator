@@ -1,15 +1,13 @@
-package org.timemates.rrpc.codegen
+package org.timemates.rrpc.codegen.schema
 
 import com.squareup.wire.schema.ProtoMember
 import com.squareup.wire.schema.ProtoType
 import com.squareup.wire.schema.Schema
-import org.timemates.rrpc.codegen.schema.RSElementLocation
-import org.timemates.rrpc.codegen.schema.RSField
-import org.timemates.rrpc.codegen.schema.RSFile
-import org.timemates.rrpc.codegen.schema.RSResolver
-import org.timemates.rrpc.codegen.schema.RSService
-import org.timemates.rrpc.codegen.schema.RSType
-import org.timemates.rrpc.codegen.schema.RSTypeMemberUrl
+import org.timemates.rrpc.codegen.RSVisitor
+import org.timemates.rrpc.codegen.asRSField
+import org.timemates.rrpc.codegen.asRSFile
+import org.timemates.rrpc.codegen.asRSService
+import org.timemates.rrpc.codegen.asRSType
 import org.timemates.rrpc.codegen.schema.value.LocationPath
 import org.timemates.rrpc.codegen.schema.value.RSDeclarationUrl
 
@@ -59,5 +57,20 @@ private class SchemaAsRSResolver(
 
     override fun resolveAllTypes(): Sequence<RSType> {
         return schema.protoFiles.asSequence().flatMap { it.types }.map { it.asRSType() }
+    }
+
+    override fun resolveAllExtends(): Sequence<RSExtend> {
+        return resolveAvailableFiles()
+            .flatMap { it.extends + it.types.flatMap { it.allExtends } }
+    }
+
+    override fun resolveExtendsOfType(url: RSDeclarationUrl): Sequence<RSExtend> {
+        return resolveAllExtends().filter {
+            it.typeUrl == url
+        }
+    }
+
+    override fun filter(visitor: RSVisitor<Unit, Boolean>): RSResolver {
+        return RSResolver(resolveAvailableFiles().toList()).filter(visitor)
     }
 }

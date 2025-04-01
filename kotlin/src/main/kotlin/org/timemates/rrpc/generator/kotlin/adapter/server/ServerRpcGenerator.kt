@@ -20,7 +20,7 @@ public object ServerRpcGenerator {
     ): FunSpec {
         val (requestType, returnType) = getRpcType(rpc, resolver)
 
-        return FunSpec.builder(rpc.kotlinName())
+        return FunSpec.builder(rpc.kotlinName)
             .addKdoc(rpc.documentation?.replace("%", "%%").orEmpty())
             .addModifiers(KModifier.ABSTRACT)
             .deprecated(rpc.options.isDeprecated)

@@ -1,5 +1,6 @@
 package org.timemates.rrpc.codegen.schema
 
+import org.timemates.rrpc.codegen.RSVisitor
 import org.timemates.rrpc.codegen.schema.annotations.NonPlatformSpecificAccess
 import org.timemates.rrpc.codegen.schema.value.LocationPath
 import org.timemates.rrpc.codegen.schema.value.RSDeclarationUrl
@@ -77,6 +78,32 @@ public interface RSResolver {
      * @return A sequence of all [RSType]s available within this resolver.
      */
     public fun resolveAllTypes(): Sequence<RSType>
+
+    /**
+     * Resolves all available [RSExtend]s in the current [RSResolver].
+     */
+    public fun resolveAllExtends(): Sequence<RSExtend>
+
+    /**
+     * Resolves all [RSExtend]s that are extending the given type.
+     *
+     * As in proto3, that is the only version we support, you can only extend
+     * option-related messages – it can be used only to resolve all the options
+     * for specific scope, where options can be used.
+     */
+    public fun resolveExtendsOfType(url: RSDeclarationUrl): Sequence<RSExtend>
+
+    /**
+     * Filters out the nodes that are not satisfies criteria returned by
+     * [visitor].
+     *
+     * **Implementation note**: the filtering starts from top declarations to bottom,
+     * meaning if top-level declaration like a message does not satisfy the criteria,
+     * the further sub-declarations are not processed or included. Additionally,
+     *  if the option field is removed, it removes any references in the schema. Works only
+     * for options.
+     */
+    public fun filter(visitor: RSVisitor<Unit, Boolean>): RSResolver
 }
 
 private class InMemoryRSResolver(
@@ -103,6 +130,20 @@ private class InMemoryRSResolver(
         buildMap {
             files.forEach { file ->
                 put("${file.location.basePath}:${file.location.relativePath}", file)
+            }
+        }
+    }
+
+    private val extendsIndex: Map<RSDeclarationUrl, MutableList<RSExtend>> by lazy {
+        buildMap {
+            files.forEach { file ->
+                (file.extends + file.allTypes.flatMap { it.allExtends }).forEach { extend ->
+                    if (containsKey(extend.typeUrl)) {
+                        this[extend.typeUrl]!!.add(extend)
+                    } else {
+                        put(extend.typeUrl, mutableListOf(extend))
+                    }
+                }
             }
         }
     }
@@ -164,5 +205,192 @@ private class InMemoryRSResolver(
 
     override fun resolveAllTypes(): Sequence<RSType> {
         return typesIndex.values.asSequence()
+    }
+
+    override fun resolveAllExtends(): Sequence<RSExtend> {
+        return extendsIndex.values.asSequence().flatten()
+    }
+
+    override fun resolveExtendsOfType(url: RSDeclarationUrl): Sequence<RSExtend> {
+        return extendsIndex[url]?.asSequence() ?: emptySequence()
+    }
+
+    override fun filter(visitor: RSVisitor<Unit, Boolean>): RSResolver {
+        val optionsToRemove: MutableSet<RSTypeMemberUrl> = mutableSetOf()
+
+        val initResult = files.mapNotNull { file ->
+            if (!visitor.visitFile(file, Unit)) {
+                (file.extends + file.types.flatMap { it.allExtends }).forEach { extend ->
+                    optionsToRemove += extend.fields.map { RSTypeMemberUrl(extend.typeUrl, it.name) }
+                }
+                return@mapNotNull null
+            }
+
+            file.copy(
+                types = file.types.mapNotNull { type ->
+                    filterType(optionsToRemove, type, visitor)
+                },
+                extends = file.extends.mapNotNull {
+                    val result = filterExtend(it, visitor)
+                    optionsToRemove.addAll(result.second)
+                    result.first
+                },
+                services = file.services.mapNotNull { service ->
+                    filterService(service, visitor)
+                },
+            )
+        }
+
+        if (optionsToRemove.isEmpty())
+            return RSResolver(initResult)
+
+        return RSResolver(
+            initResult.map { file ->
+                file.copy(
+                    options = file.options.withFilteredFrom(optionsToRemove),
+                    types = file.types.map { pruneOptionsInType(it, optionsToRemove) },
+                    extends = file.extends.map { pruneOptionsInExtend(it, optionsToRemove) },
+                    services = file.services.map { pruneOptionsInService(it, optionsToRemove) },
+                )
+            }
+        )
+    }
+
+    private fun filterType(
+        optionsToRemove: MutableSet<RSTypeMemberUrl>,
+        type: RSType,
+        visitor: RSVisitor<Unit, Boolean>,
+    ): RSType? {
+        if (!visitor.visitType(type, Unit)) {
+            type.allExtends.forEach { extend ->
+                optionsToRemove.addAll(extend.fields.map { RSTypeMemberUrl(extend.typeUrl, it.name) })
+            }
+            return null
+        }
+
+        return when (type) {
+            is RSType.Enclosing -> type
+            is RSType.Enum -> {
+                type.copy(
+                    constants = type.constants.mapNotNull { constant ->
+                        if (!visitor.visitConstant(constant, Unit)) {
+                            null
+                        } else {
+                            constant
+                        }
+                    }
+                )
+            }
+
+            is RSType.Message -> {
+                type.copy(
+                    fields = type.fields.mapNotNull { field ->
+                        if (!visitor.visitField(field, Unit)) {
+                            null
+                        } else {
+                            field
+                        }
+                    },
+                    oneOfs = type.oneOfs.mapNotNull { oneOf ->
+                        if (!visitor.visitOneOf(oneOf, Unit)) {
+                            null
+                        } else {
+                            oneOf
+                        }
+                    }
+                )
+            }
+        }.let { type ->
+            type.copy(
+                newNestedTypes = type.nestedTypes.mapNotNull { filterType(optionsToRemove, it, visitor) },
+                newNestedExtends = type.nestedExtends.mapNotNull {
+                    val result = filterExtend(it, visitor)
+                    optionsToRemove.addAll(result.second)
+                    result.first
+                }
+            )
+        }
+    }
+
+    private fun filterExtend(
+        extend: RSExtend,
+        visitor: RSVisitor<Unit, Boolean>,
+    ): Pair<RSExtend?, List<RSTypeMemberUrl>> {
+        val extend = if (!visitor.visitExtend(extend, Unit))
+            return Pair(null, extend.fields.map { RSTypeMemberUrl(extend.typeUrl, it.name) })
+        else extend
+
+        val resulting = extend.fields.associateWith { field ->
+            visitor.visitField(field, Unit)
+        }
+
+        return extend.copy(
+            fields = resulting.mapNotNull { (field, bool) ->
+                if (bool) field else null
+            }
+        ) to extend.fields.map {
+            RSTypeMemberUrl(extend.typeUrl, it.name)
+        }
+    }
+
+    private fun filterService(service: RSService, visitor: RSVisitor<Unit, Boolean>): RSService? {
+        return (if (!visitor.visitService(service, Unit)) null else service)
+            .let { service ->
+                service?.copy(
+                    rpcs = service.rpcs.mapNotNull { rpc ->
+                        if (!visitor.visitRpc(rpc, Unit)) null else rpc
+                    },
+                )
+            }
+    }
+
+    private fun pruneOptionsInService(service: RSService, optionsToRemove: Set<RSTypeMemberUrl>): RSService {
+        return service.copy(
+            options = service.options.withFilteredFrom(optionsToRemove),
+            rpcs = service.rpcs.map { rpc -> rpc.copy(options = rpc.options.withFilteredFrom(optionsToRemove)) },
+        )
+    }
+
+    private fun pruneOptionsInType(type: RSType, optionsToRemove: Set<RSTypeMemberUrl>): RSType {
+        val options = type.options.withFilteredFrom(optionsToRemove)
+        return when (type) {
+            is RSType.Enclosing -> {
+                type.copy(
+                    nestedTypes = type.nestedTypes.map { pruneOptionsInType(it, optionsToRemove) },
+                    nestedExtends = type.nestedExtends.map { pruneOptionsInExtend(it, optionsToRemove) },
+                    options = options,
+                )
+            }
+
+            is RSType.Enum -> {
+                type.copy(
+                    constants = type.constants.map { it.copy(options = it.options.withFilteredFrom(optionsToRemove)) },
+                    nestedTypes = type.nestedTypes.map { pruneOptionsInType(it, optionsToRemove) },
+                    nestedExtends = type.nestedExtends.map { pruneOptionsInExtend(it, optionsToRemove) },
+                    options = options,
+                )
+            }
+
+            is RSType.Message -> {
+                type.copy(
+                    fields = type.fields.map { it.copy(options = it.options.withFilteredFrom(optionsToRemove)) },
+                    oneOfs = type.oneOfs.map { oneOf ->
+                        oneOf.copy(
+                            options = oneOf.options.withFilteredFrom(optionsToRemove),
+                            fields = oneOf.fields.map { it.copy(options = it.options.withFilteredFrom(optionsToRemove)) },
+                        )
+                    },
+                    options = options,
+                    nestedTypes = type.nestedTypes.map { pruneOptionsInType(it, optionsToRemove) },
+                    nestedExtends = type.nestedExtends.map { pruneOptionsInExtend(it, optionsToRemove) }
+                )
+            }
+        }
+    }
+
+    private fun pruneOptionsInExtend(extend: RSExtend, optionsToRemove: Set<RSTypeMemberUrl>): RSExtend {
+        return extend.copy(
+            fields = extend.fields.map { it.copy(options = it.options.withFilteredFrom(optionsToRemove)) },
+        )
     }
 }

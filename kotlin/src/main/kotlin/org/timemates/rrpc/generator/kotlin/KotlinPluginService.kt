@@ -4,9 +4,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okio.FileSystem
 import org.timemates.rrpc.codegen.configuration.GenerationOptions
-import org.timemates.rrpc.codegen.plugin.PluginService
+import org.timemates.rrpc.codegen.logging.RLogger
+import org.timemates.rrpc.codegen.plugin.GenerationPluginService
 import org.timemates.rrpc.codegen.plugin.data.OptionDescriptor
-import org.timemates.rrpc.codegen.plugin.data.PluginSignal
 import org.timemates.rrpc.codegen.plugin.data.toOptionDescriptor
 import org.timemates.rrpc.codegen.schema.RSFile
 import org.timemates.rrpc.codegen.schema.RSResolver
@@ -15,7 +15,7 @@ import org.timemates.rrpc.generator.kotlin.adapter.FileGenerator
 import org.timemates.rrpc.generator.kotlin.adapter.metadata.CombinedFilesMetadataGenerator
 import org.timemates.rrpc.generator.kotlin.options.*
 
-public object KotlinPluginService : PluginService {
+public object KotlinPluginService : GenerationPluginService {
     override val options: List<OptionDescriptor> = listOf(
         GenerationOptions.KOTLIN_CLIENT_GENERATION,
         GenerationOptions.KOTLIN_SERVER_GENERATION,
@@ -32,42 +32,45 @@ public object KotlinPluginService : PluginService {
     override suspend fun generateCode(
         options: GenerationOptions,
         files: List<RSFile>,
-    ): PluginSignal.RequestStatusChange = runCatching {
-        withContext(Dispatchers.IO) {
-            val options = KotlinPluginOptions(options)
-            FileSystem.SYSTEM.deleteRecursively(options.output)
-            FileSystem.SYSTEM.createDirectories(options.output)
+        logger: RLogger,
+    ): Unit = withContext(Dispatchers.IO) {
+        val options = KotlinPluginOptions(options)
 
-            val resolver = RSResolver(files)
-            resolver.resolveAvailableFiles().filterNot {
-                it.packageName?.value?.startsWith("google.protobuf") == true ||
-                    it.packageName?.value?.startsWith("wire") == true
-            }.map { file ->
-                FileGenerator.generateFile(
-                    resolver = resolver,
-                    file = file,
-                    clientGeneration = options.isClientGenerationEnabled,
-                    serverGeneration = options.isServerGenerationEnabled,
-                )
-            }.forEach { spec ->
-                spec.writeTo(directory = options.output.toNioPath())
-            }
+        FileSystem.SYSTEM.deleteRecursively(options.output)
+        FileSystem.SYSTEM.createDirectories(options.output)
 
-            if (options.metadataGeneration) {
-                CombinedFilesMetadataGenerator.generate(
-                    name = options.metadataScopeName,
-                    resolver = resolver,
-                ).writeTo(options.output.toNioPath())
-            }
+        if (options.isServerGenerationEnabled)
+            logger.debug("Configured to generate server stubs.")
+        else logger.debug("Configured not to generate server stubs.")
 
-            PluginSignal.RequestStatusChange.Finished(
-                message = "Kotlin Plugin generation finished, output: ${options.output}"
+        if (options.isClientGenerationEnabled)
+            logger.debug("Configured to generate client-specific code.")
+        else logger.debug("Configured not to generate client-specific code.")
+
+        if (!options.isTypesGenerationEnabled)
+            logger.debug("Configured not to generate proto types.")
+
+        val resolver = RSResolver(files)
+        resolver.resolveAvailableFiles().filterNot {
+            it.packageName?.value?.startsWith("google.protobuf") == true ||
+                it.packageName?.value?.startsWith("wire") == true
+        }.map { file ->
+            FileGenerator.generateFile(
+                resolver = resolver,
+                file = file,
+                clientGeneration = options.isClientGenerationEnabled,
+                serverGeneration = options.isServerGenerationEnabled,
             )
+        }.forEach { spec ->
+            spec.writeTo(directory = options.output.toNioPath())
         }
-    }.getOrElse { exception ->
-        PluginSignal.RequestStatusChange.Failed(
-            message = exception.stackTraceToString(),
-        )
+
+        if (options.metadataGeneration) {
+            CombinedFilesMetadataGenerator.generate(
+                name = options.metadataScopeName,
+                resolver = resolver,
+            ).writeTo(options.output.toNioPath())
+        }
     }
 
     override val description: String = """

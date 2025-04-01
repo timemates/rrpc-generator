@@ -6,7 +6,7 @@ import org.timemates.rrpc.codegen.schema.value.RSDeclarationUrl
 
 
 @Serializable
-public class RSService(
+public data class RSService(
     /**
      * Name of the service.
      */

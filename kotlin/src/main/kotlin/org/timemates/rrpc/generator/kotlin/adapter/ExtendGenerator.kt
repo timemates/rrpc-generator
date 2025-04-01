@@ -7,6 +7,7 @@ import org.timemates.rrpc.generator.kotlin.adapter.internal.LibClassNames
 import org.timemates.rrpc.codegen.schema.RSExtend
 import org.timemates.rrpc.codegen.schema.RSOptions
 import org.timemates.rrpc.codegen.schema.RSResolver
+import org.timemates.rrpc.codegen.schema.isRetentionSource
 import org.timemates.rrpc.codegen.schema.value.RSDeclarationUrl
 
 public object ExtendGenerator {
@@ -23,7 +24,10 @@ public object ExtendGenerator {
             RSOptions.METHOD_OPTIONS,
             RSOptions.FILE_OPTIONS,
             RSOptions.SERVICE_OPTIONS,
-                -> extend.fields.map {
+                -> extend.fields.mapNotNull {
+                    if (it.options.isRetentionSource)
+                        return@mapNotNull null
+
                 OptionGenerator.generateOption(
                     field = it,
                     type = getClassNameFromExtendType(extend.typeUrl),

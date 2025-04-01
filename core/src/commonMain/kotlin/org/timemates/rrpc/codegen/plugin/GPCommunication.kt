@@ -1,6 +1,7 @@
 package org.timemates.rrpc.codegen.plugin
 
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.serialization.KSerializer
@@ -43,7 +44,7 @@ public sealed interface GPCommunication<TInput : GPMessage<*>, TOutput : GPMessa
     public val isClosedForSend: Boolean
 }
 
-public suspend inline fun <reified TInput : GPSignal> GPCommunication<*, *>.receiveOr(crossinline block: () -> Nothing): TInput = coroutineScope{
+public suspend inline fun <reified TInput : GPSignal> GPCommunication<*, *>.receiveOr(crossinline block: () -> Nothing): TInput = coroutineScope {
     while (isActive) {
         if (incoming.isClosed || isClosedForSend) break
         if (!incoming.hasNext()) continue
@@ -55,6 +56,31 @@ public suspend inline fun <reified TInput : GPSignal> GPCommunication<*, *>.rece
     }
 
     block()
+}
+
+public suspend inline fun <TInput : GPMessage<*>> GPCommunication<TInput, *>.receive(): TInput {
+    while (currentCoroutineContext().isActive) {
+        if (incoming.isClosed || isClosedForSend) break
+        if (!incoming.hasNext()) continue
+
+        return incoming.next()
+    }
+
+    error("No message received.")
+}
+
+public suspend inline fun <reified TInput : GPSignal> GPCommunication<*, *>.receiveWhileIsAndReturnUnsatisfied(
+    processor: (TInput) -> Unit,
+): GPSignal {
+    while (currentCoroutineContext().isActive) {
+        if (incoming.isClosed || isClosedForSend) break
+        if (!incoming.hasNext()) continue
+
+        val item = incoming.next().signal
+        processor((item as? TInput) ?: return item)
+    }
+
+    error("No message received.")
 }
 
 public fun PluginCommunication(

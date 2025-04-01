@@ -21,6 +21,7 @@ dependencies {
 
     // -- KotlinX --
     implementation(libs.kotlinx.coroutines)
+    implementation(libs.kotlinx.serialization.json)
     implementation(libs.kotlinx.serialization.proto)
 
     // -- Integration Tests --

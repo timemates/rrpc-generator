@@ -35,12 +35,17 @@ public class RSOption(
 
     public companion object {
         public val DEPRECATED: RSTypeMemberUrl = RSTypeMemberUrl(RSOptions.METHOD_OPTIONS, "deprecated")
+        public val RETENTION: RSTypeMemberUrl = RSTypeMemberUrl(RSOptions.FIELD_OPTIONS, "retention")
     }
 
     @Serializable
     public sealed interface Value {
         @Serializable
-        public data class Raw(@ProtoNumber(1) public val string: String) : Value
+        public data class Raw(@ProtoNumber(1) public val string: String) : Value {
+            override fun toString(): String {
+                return string
+            }
+        }
         @Serializable
         public data class RawMap(@ProtoNumber(1) public val map: Map<Raw, Raw>) : Value
         @Serializable

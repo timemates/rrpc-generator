@@ -8,6 +8,7 @@ import kotlinx.serialization.protobuf.ProtoOneOf
 import kotlinx.serialization.protobuf.ProtoPacked
 import kotlinx.serialization.protobuf.ProtoType
 import kotlinx.serialization.protobuf.schema.ProtoBufSchemaGenerator
+import org.timemates.rrpc.codegen.configuration.GenerationOptions
 import org.timemates.rrpc.codegen.schema.RSFile
 
 public sealed interface GeneratorSignal : GPSignal {
@@ -26,11 +27,13 @@ public sealed interface GeneratorSignal : GPSignal {
      */
     @Serializable
     public data class SendInput(
-        @ProtoNumber(1)
-        public val outputPath: String,
         @EncodeDefault
-        @ProtoNumber(2)
+        @ProtoPacked
+        @ProtoNumber(1)
         public val files: List<RSFile>,
+        @ProtoNumber(2)
+        @ProtoPacked
+        public val options: GenerationOptions,
     ) : GeneratorSignal
 }
 
@@ -50,6 +53,7 @@ public fun GeneratorMessage(
  * @property id The unique identifier for the signal, used to track and correlate requests and responses.
  * @property signal The actual signal being transmitted, encapsulated as a [GeneratorSignal].
  */
+@ConsistentCopyVisibility
 @Serializable
 public data class GeneratorMessage private constructor(
     @ProtoType(ProtoIntegerType.DEFAULT)
@@ -94,7 +98,7 @@ public data class GeneratorMessage private constructor(
          * Assigning a value automatically maps it to the appropriate sealed subclass of [GenSignalOneOf].
          */
         public var signal: GeneratorSignal?
-            get() = TODO()
+            get() = error("Shouldn't be accessed.")
             set(value) {
                 signalOneOf = when (value) {
                     is GeneratorSignal.FetchMetadata ->

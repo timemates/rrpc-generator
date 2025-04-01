@@ -3,8 +3,12 @@ package org.timemates.rrpc.gradle.configuration
 import org.gradle.api.GradleException
 import org.gradle.api.Project
 import org.gradle.api.artifacts.Configuration
+import org.gradle.api.artifacts.ExternalModuleDependency
+import org.gradle.api.artifacts.ModuleIdentifier
+import org.gradle.api.provider.MapProperty
 import org.gradle.internal.os.OperatingSystem
 import org.gradle.kotlin.dsl.create
+import org.timemates.rrpc.gradle.configuration.type.PluginDependencyType
 
 /**
  * A builder class for configuring plugins and their options for code generation.
@@ -18,6 +22,7 @@ import org.gradle.kotlin.dsl.create
 public class PluginsBuilder(
     private val project: Project,
     private val configuration: Configuration,
+    private val options: MapProperty<ModuleIdentifier, Map<String, Any>>,
 ) {
     /**
      * Configures an external plugin for code generation.
@@ -30,11 +35,40 @@ public class PluginsBuilder(
      * Example usage:
      * ```kotlin
      * plugins {
-     *     add("com.example:custom-plugin:1.0.0")
+     *     jar("com.example:custom-plugin:1.0.0")
      * }
      * ```
      */
-    public fun add(notation: String) {
+    public fun add(
+        notation: String,
+        type: PluginDependencyType = PluginDependencyType.JAR,
+        optionsBuilder: PluginOptionsBuilder.() -> Unit = {},
+    ) {
+        val dependency = when (type) {
+            PluginDependencyType.BINARY -> binary(notation)
+            else -> project.dependencies.create(
+                dependencyNotation = notation,
+            ) {
+                artifact {
+                    extension = "jar"
+                }
+            }
+        }
+
+        options.put(
+            dependency.module,
+            mutableMapOf<String, Any>().apply {
+                PluginOptionsBuilder(this).apply(optionsBuilder)
+            }.toMap(),
+        )
+
+        project.dependencies.add(
+            configuration.name,
+            dependency,
+        )
+    }
+
+    private fun binary(notation: String): ExternalModuleDependency {
         var osClassifier: String
         var fileExtension: String
 
@@ -57,7 +91,7 @@ public class PluginsBuilder(
             else -> throw GradleException("Unsupported OS: ${OperatingSystem.current()}")
         }
 
-        val dependency = project.dependencies.create(
+        return project.dependencies.create(
             notation,
         ) {
             artifact {
@@ -65,10 +99,5 @@ public class PluginsBuilder(
                 classifier = osClassifier
             }
         }
-
-        project.dependencies.add(
-            configuration.name,
-            dependency,
-        )
     }
 }

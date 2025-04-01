@@ -3,9 +3,11 @@ package org.timemates.rrpc.generator.kotlin.adapter.options
 import com.squareup.kotlinpoet.KModifier
 import com.squareup.kotlinpoet.PropertySpec
 import com.squareup.kotlinpoet.buildCodeBlock
+import org.timemates.rrpc.codegen.exception.UnresolvableReferenceException
 import org.timemates.rrpc.generator.kotlin.adapter.internal.LibClassNames
 import org.timemates.rrpc.codegen.schema.RSOptions
 import org.timemates.rrpc.codegen.schema.RSResolver
+import org.timemates.rrpc.codegen.schema.isRetentionSource
 import org.timemates.rrpc.codegen.schema.kotlinPackage
 import org.timemates.rrpc.generator.kotlin.adapter.internal.ext.newline
 import org.timemates.rrpc.generator.kotlin.adapter.internal.ImportRequirement
@@ -39,10 +41,14 @@ public object ClientOptionsPropertyGenerator {
                 indent()
                 options.list.forEach { option ->
                     val field = resolver.resolveField(option.fieldUrl)!!
+
+                    if (field.options.isRetentionSource)
+                        return@forEach
+
                     val type = field.typeUrl
 
                     resolver.resolveFileOf(type)
-                        ?.kotlinPackage()
+                        ?.kotlinPackage
                         ?.let {
                             imports.add(ImportRequirement(it, listOf(field.name)))
                         }

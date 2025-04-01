@@ -2,8 +2,10 @@ package org.timemates.rrpc.codegen.configuration
 
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.protobuf.ProtoNumber
+import kotlinx.serialization.protobuf.ProtoPacked
 import okio.Path
 import okio.Path.Companion.toPath
+import org.timemates.rrpc.codegen.configuration.GenerationOptions.Companion.PERMIT_PACKAGE_CYCLES
 
 /**
  * A set of options for code generation, represented as a map of option names to values.
@@ -17,8 +19,9 @@ import okio.Path.Companion.toPath
  *
  * @see GenerationOption
  */
+@Serializable
 @JvmInline
-public value class GenerationOptions(private val map: Map<String, Any>) {
+public value class GenerationOptions private constructor(private val map: Map<String, OptionValue>) {
     /**
      * A collection of predefined options for code generation.
      */
@@ -65,7 +68,9 @@ public value class GenerationOptions(private val map: Map<String, Any>) {
     @Suppress("UNCHECKED_CAST")
     public operator fun <T> get(option: SingleGenerationOption<T>): T? {
         return map[option.name]?.let {
-            option.valueFactory((if (it is List<*>) it.firstOrNull()?.toString() else it.toString()) ?: return null)
+            option.valueFactory(
+                (if (!it.isSingle) it.multiple.firstOrNull() else it.single) ?: return null
+            )
         }
     }
 
@@ -77,40 +82,40 @@ public value class GenerationOptions(private val map: Map<String, Any>) {
      */
     @Suppress("UNCHECKED_CAST")
     public operator fun <T> get(option: RepeatableGenerationOption<T>): List<T>? {
-        val list = map[option.name] as? List<String> ?: run {
-            return map[option.name]?.let { listOf(option.valueFactory(it.toString())) }
-        }
+        val value = map[option.name] ?: return null
+        val list = if (value.isSingle) listOf(value.single) else value.multiple
+
         return list.map { option.valueFactory(it) }
     }
 
-    public val raw: Map<String, Any> get() = map.toMap()
+    public val raw: Map<String, Any> get() = map.mapValues { (_, v) -> if (v.isSingle) v.single else v.multiple }
 
-    public fun builder(block: Builder.() -> Unit): GenerationOptions = Builder(raw.toMutableMap()).apply(block).build()
+    public fun builder(block: Builder.() -> Unit): GenerationOptions = Builder(map.toMutableMap()).apply(block).build()
 
-    public class Builder(private val map: MutableMap<String, Any> = mutableMapOf()) {
+    public class Builder internal constructor(private val map: MutableMap<String, OptionValue> = mutableMapOf()) {
         public operator fun <T : Any> set(option: SingleGenerationOption<T>, value: String) {
-            map[option.name] = value
+            map[option.name] = OptionValue(single = value, isSingle = true)
         }
 
         public fun <T : Any> append(option: RepeatableGenerationOption<T>, value: String) {
             if (map.containsKey(option.name)) {
                 @Suppress("UNCHECKED_CAST")
-                map[option.name] = (map[option.name] as? List<String>)?.plus(value) ?: listOf(value)
+                map[option.name] = OptionValue(multiple = map[option.name]?.multiple?.plus(value) ?: listOf(value), isSingle = false)
             } else {
-                map[option.name] = listOf(value)
+                map[option.name] = OptionValue(multiple = listOf(value), isSingle = false)
             }
         }
 
         public fun rawSet(name: String, value: String) {
-            map[name] = value
+            map[name] = OptionValue(single = value, isSingle = true)
         }
 
         public fun rawAppend(name: String, value: String) {
             if (map.containsKey(name)) {
                 @Suppress("UNCHECKED_CAST")
-                map[name] = (map[name] as? List<String>)?.plus(value) ?: listOf(value)
+                map[name] = OptionValue(multiple = map[name]?.multiple?.plus(value) ?: listOf(value), isSingle = false)
             } else {
-                map[name] = listOf(value)
+                map[name] = OptionValue(multiple = listOf(value), isSingle = false)
             }
         }
 
@@ -118,15 +123,30 @@ public value class GenerationOptions(private val map: Map<String, Any>) {
             return GenerationOptions(map.toMap())
         }
     }
+
+    @Serializable
+    internal class OptionValue(
+        @ProtoNumber(1)
+        val single: String = "",
+        @ProtoPacked
+        @ProtoNumber(2)
+        val multiple: List<String> = emptyList(),
+        @ProtoNumber(3)
+        val isSingle: Boolean = true,
+    )
+
 }
 
-public val GenerationOptions.contextInputs: List<Path> get() =
-    this[GenerationOptions.CONTEXT_INPUT].orEmpty()
+public val GenerationOptions.contextInputs: List<Path>
+    get() =
+        this[GenerationOptions.CONTEXT_INPUT].orEmpty()
 
-public val GenerationOptions.sourceInputs: List<Path> get() =
-    this[GenerationOptions.SOURCE_INPUT].orEmpty()
+public val GenerationOptions.sourceInputs: List<Path>
+    get() =
+        this[GenerationOptions.SOURCE_INPUT].orEmpty()
 
-public val GenerationOptions.isPackageCyclesPermitted: Boolean get() = this[GenerationOptions.PERMIT_PACKAGE_CYCLES] ?: false
+public val GenerationOptions.isPackageCyclesPermitted: Boolean
+    get() = this[GenerationOptions.PERMIT_PACKAGE_CYCLES] ?: false
 
 /**
  * Represents an option for code generation, identified by its unique name.
@@ -176,6 +196,7 @@ public sealed interface OptionTypeKind {
         override val readableName: String
             get() = "Boolean"
     }
+
     @Serializable
     public sealed interface Number : OptionTypeKind {
         @Serializable
@@ -183,27 +204,32 @@ public sealed interface OptionTypeKind {
             override val readableName: String
                 get() = "Int"
         }
+
         @Serializable
         public data object Long : Number {
             override val readableName: String
                 get() = "Long"
         }
+
         @Serializable
         public data object Float : Number {
             override val readableName: String
                 get() = "Float"
         }
+
         @Serializable
         public data object Double : Number {
             override val readableName: String
                 get() = "Double"
         }
     }
+
     @Serializable
     public data object Path : OptionTypeKind {
         override val readableName: String
             get() = "Path"
     }
+
     @Serializable
     public data class Choice(@ProtoNumber(1) public val variants: List<String>) : OptionTypeKind {
         override val readableName: String

@@ -57,7 +57,7 @@ public object ServerMetadataGenerator {
                         newline(",")
                         add("outputSerializer = %T.serializer()", responseType)
                         newline(",")
-                        add("procedure = { context, data -> %L(context, data) }", rpc.kotlinName())
+                        add("procedure = { context, data -> %L(context, data) }", rpc.kotlinName)
                         newline(",")
 
                         add("options = ")

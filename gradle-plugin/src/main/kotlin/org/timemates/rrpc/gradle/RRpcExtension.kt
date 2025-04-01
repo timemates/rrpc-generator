@@ -3,13 +3,15 @@ package org.timemates.rrpc.gradle
 import org.gradle.api.Project
 import org.gradle.api.artifacts.Configuration
 import org.gradle.api.artifacts.Dependency
+import org.gradle.api.artifacts.ModuleIdentifier
 import org.gradle.api.file.ConfigurableFileCollection
 import org.gradle.api.file.RegularFileProperty
-import org.gradle.api.internal.catalog.AbstractExternalDependencyFactory
+import org.gradle.api.plugins.JavaPluginExtension
 import org.gradle.api.provider.MapProperty
 import org.gradle.api.provider.Property
+import org.gradle.kotlin.dsl.getByType
 import org.gradle.kotlin.dsl.mapProperty
-import org.timemates.rrpc.gradle.configuration.GenOptionsBuilder
+import org.gradle.kotlin.dsl.property
 import org.timemates.rrpc.gradle.configuration.PluginsBuilder
 import org.timemates.rrpc.gradle.configuration.ProtoInputBuilder
 import org.timemates.rrpc.gradle.configuration.type.ProtoDependencyType
@@ -24,7 +26,7 @@ import kotlin.io.path.absolutePathString
  *
  * @property inputFolders A list of protocol buffer input sources, including directories, archives, or external dependencies.
  * @property plugins A list of generation plugins, which can include built-in plugins like Kotlin or external ones.
- * @property options A map of key-value pairs for configuring plugin-specific options.
+ * @property pluginOptions A map of key-value pairs for configuring plugin-specific options.
  * @property permitPackageCycles A flag that controls whether package cycles are allowed during generation.
  *   Defaults to `false`, which raises an error for package cycles.
  */
@@ -48,11 +50,13 @@ public open class RRpcExtension(
      * A map of options used to configure plugin-specific behaviors.
      * Keys represent the option names, and values can be of any type, allowing for flexible configuration.
      */
-    internal val options: MapProperty<String, Any> = objects.mapProperty(String::class.java, Any::class.java)
+    internal val pluginOptions: MapProperty<ModuleIdentifier, Map<String, Any>> = objects.mapProperty()
 
     internal val dependencyTypes: MapProperty<Dependency, ProtoDependencyType> =
         objects.mapProperty(Dependency::class.java, ProtoDependencyType::class.java)
 
+    public val permitPackageCycles: Property<Boolean> = objects.property<Boolean>()
+        .convention(false)
     public val outputFolder: RegularFileProperty = objects.fileProperty()
 
     /**
@@ -103,27 +107,6 @@ public open class RRpcExtension(
      */
     @RRpcGradlePluginDsl
     public fun plugins(action: PluginsBuilder.() -> Unit) {
-        PluginsBuilder(project, pluginsDeps).action()
-    }
-
-    /**
-     * Configures generation options.
-     *
-     * @param action A configuration block using the `GenOptionsBuilder` DSL. Example usage:
-     * ```kotlin
-     * options {
-     *  /**
-     *   * Determines whether package cycle checks are permitted during generation.
-     *   *
-     *   * By default, this is set to `false`, which raises an error if package cycles are detected.
-     *   * Setting it to `true` will allow package cycles without error.
-     *   */
-     *  append("permit_package_cycles", true)
-     * }
-     * ```
-     */
-    @RRpcGradlePluginDsl
-    public fun options(action: GenOptionsBuilder.() -> Unit) {
-        GenOptionsBuilder(options).action()
+        PluginsBuilder(project, pluginsDeps, pluginOptions).action()
     }
 }

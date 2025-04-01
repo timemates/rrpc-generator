@@ -3,16 +3,13 @@ package org.timemates.rrpc.codegen.plugin.data
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.protobuf.ProtoNumber
 import kotlinx.serialization.protobuf.ProtoOneOf
+import org.timemates.rrpc.codegen.logging.RLogger
+import org.timemates.rrpc.codegen.plugin.PluginService
 import org.timemates.rrpc.codegen.plugin.data.PluginMessage.SignalOneOf.*
+import org.timemates.rrpc.codegen.schema.RSFile
 
 @Serializable
 public sealed interface PluginSignal : GPSignal {
-    /**
-     * Command to request input arguments that were passed to the generator.
-     */
-    @Serializable
-    public object RequestInput : PluginSignal
-
     @Serializable
     public data class SendMetaInformation(
         @ProtoNumber(1)
@@ -21,23 +18,32 @@ public sealed interface PluginSignal : GPSignal {
         @Serializable
         public data class MetaInformation(
             @ProtoNumber(1)
-            public val options: List<OptionDescriptor>,
-            @ProtoNumber(2)
             public val name: String,
-            @ProtoNumber(3)
+            @ProtoNumber(2)
             public val description: String,
+            @ProtoNumber(3)
+            public val options: List<OptionDescriptor>,
+            @ProtoNumber(4)
+            public val role: PluginService.PluginRole
         )
     }
 
     @Serializable
-    public sealed interface RequestStatusChange : PluginSignal {
-        public val message: String
+    public data class ChangedInput(
+        @ProtoNumber(1)
+        public val files: List<RSFile>,
+    ) : PluginSignal
 
-        @Serializable
-        public data class Finished(public override val message: String) : RequestStatusChange
-        @Serializable
-        public data class Failed(public override val message: String) : RequestStatusChange
-    }
+    @Serializable
+    public data class LogMessage(
+        @ProtoNumber(1)
+        public val message: String,
+        @ProtoNumber(2)
+        public val level: RLogger.Level,
+    ) : PluginSignal
+
+    @Serializable
+    public data object CodeGenerated : PluginSignal
 }
 
 /**
@@ -94,16 +100,15 @@ public data class PluginMessage @PublishedApi internal constructor(
             get() = signalOneOf?.value
             set(value) {
                 signalOneOf = when (value) {
-                    is PluginSignal.RequestInput ->
-                        RequestInputField(value)
 
-                    is PluginSignal.RequestStatusChange.Failed ->
-                        RequestStatusFailedField(value)
+                    is PluginSignal.ChangedInput ->
+                        ChangedInput(value)
 
-                    is PluginSignal.SendMetaInformation -> SendOptionsField(value)
+                    is PluginSignal.SendMetaInformation -> SendMetadataInformation(value)
 
-                    is PluginSignal.RequestStatusChange.Finished ->
-                        RequestStatusFinishedField(value)
+                    is PluginSignal.CodeGenerated -> CodeGenerated(value)
+
+                    is PluginSignal.LogMessage -> LogMessage(value)
 
                     null -> null
                 }
@@ -128,27 +133,27 @@ public data class PluginMessage @PublishedApi internal constructor(
         val value: PluginSignal
 
         @Serializable
-        data class RequestInputField(
+        data class CodeGenerated(
             @ProtoNumber(2)
-            override val value: PluginSignal.RequestInput,
+            override val value: PluginSignal.CodeGenerated,
         ) : SignalOneOf
 
         @Serializable
-        data class RequestStatusFinishedField(
+        data class ChangedInput(
             @ProtoNumber(3)
-            override val value: PluginSignal.RequestStatusChange.Finished,
+            override val value: PluginSignal.ChangedInput,
         ) : SignalOneOf
 
         @Serializable
-        data class RequestStatusFailedField(
+        data class SendMetadataInformation(
             @ProtoNumber(4)
-            override val value: PluginSignal.RequestStatusChange.Failed,
+            override val value: PluginSignal.SendMetaInformation,
         ) : SignalOneOf
 
         @Serializable
-        data class SendOptionsField(
+        data class LogMessage(
             @ProtoNumber(5)
-            override val value: PluginSignal.SendMetaInformation,
+            override val value: PluginSignal.LogMessage,
         ) : SignalOneOf
     }
 }

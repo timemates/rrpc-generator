@@ -18,6 +18,7 @@ public sealed interface RSType : RSNode, Documentable {
     public val options: RSOptions
     public val location: RSElementLocation
 
+    public fun copy(newNestedTypes: List<RSType> = nestedTypes, newNestedExtends: List<RSExtend> = nestedExtends, newOptions: RSOptions = options): RSType
 
     public data class Enum(
         override val name: String,
@@ -28,7 +29,15 @@ public sealed interface RSType : RSNode, Documentable {
         override val typeUrl: RSDeclarationUrl,
         override val nestedExtends: List<RSExtend> = emptyList(),
         override val location: RSElementLocation,
-    ) : RSType
+    ) : RSType {
+        override fun copy(
+            newNestedTypes: List<RSType>,
+            newNestedExtends: List<RSExtend>,
+            newOptions: RSOptions
+        ): RSType {
+            return copy(nestedExtends = newNestedExtends, nestedTypes = newNestedTypes, options = newOptions)
+        }
+    }
 
 
     public data class Message(
@@ -73,6 +82,14 @@ public sealed interface RSType : RSNode, Documentable {
         override fun hashCode(): Int {
             return typeUrl.hashCode()
         }
+
+        override fun copy(
+            newNestedTypes: List<RSType>,
+            newNestedExtends: List<RSExtend>,
+            newOptions: RSOptions
+        ): RSType {
+            return copy(nestedExtends = newNestedExtends, nestedTypes = newNestedTypes, options = newOptions)
+        }
     }
 
     public data class Enclosing(
@@ -83,7 +100,15 @@ public sealed interface RSType : RSNode, Documentable {
         override val nestedExtends: List<RSExtend> = emptyList(),
         override val options: RSOptions = RSOptions.EMPTY,
         override val location: RSElementLocation
-    ) : RSType
+    ) : RSType {
+        override fun copy(
+            newNestedTypes: List<RSType>,
+            newNestedExtends: List<RSExtend>,
+            newOptions: RSOptions
+        ): RSType {
+            return copy(nestedExtends = newNestedExtends, nestedTypes = newNestedTypes, options = newOptions)
+        }
+    }
 }
 
 @Serializable
@@ -116,6 +141,12 @@ private data class RawRSType(
         Type.ENCLOSING_TYPE -> RSType.Enclosing(name, documentation, typeUrl, nestedTypes.map { it.toRSType() }, nestedExtends, options, location)
     }
 }
+
+/**
+ * Returns all extends that is present in the [RSType] and inside another [RSType]s.
+ */
+public val RSType.allExtends: List<RSExtend>
+    get() = nestedExtends + nestedTypes.flatMap { it.allExtends }
 
 private fun RSType.toRaw(): RawRSType = when (this) {
     is RSType.Enum -> RawRSType(RawRSType.Type.ENUM, name, typeUrl, nestedTypes.map { it.toRaw() }, nestedExtends, documentation, options, location, constants)

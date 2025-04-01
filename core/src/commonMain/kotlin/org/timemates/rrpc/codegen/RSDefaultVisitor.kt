@@ -27,8 +27,12 @@ public abstract class RSDefaultVisitor<D, R> : RSEmptyVisitor<D, R>() {
         when (type) {
             is RSType.Enum -> type.constants.forEach { constant -> visitConstant(constant, data) }
             is RSType.Message -> type.fields.forEach { field -> visitField(field, data) }
-            is RSType.Enclosing -> type.nestedTypes.forEach { type -> visitType(type, data) }
+            is RSType.Enclosing -> {}
         }
+
+        type.nestedTypes.forEach { type -> visitType(type, data) }
+        type.nestedExtends.forEach { extend -> visitExtend(extend, data) }
+
         return super.visitType(type, data)
     }
 }

@@ -2,14 +2,24 @@ package org.timemates.rrpc.gradle.task
 
 import kotlinx.coroutines.*
 import org.gradle.api.DefaultTask
-import org.gradle.api.artifacts.Configuration
+import org.gradle.api.artifacts.ModuleIdentifier
 import org.gradle.api.file.ConfigurableFileCollection
 import org.gradle.api.logging.Logging
+import org.gradle.api.plugins.JavaPluginExtension
+import org.gradle.api.provider.MapProperty
+import org.gradle.api.provider.Property
+import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.InputFiles
+import org.gradle.api.tasks.Nested
 import org.gradle.api.tasks.TaskAction
+import org.gradle.jvm.toolchain.JavaLauncher
+import org.gradle.jvm.toolchain.JavaToolchainService
+import org.gradle.kotlin.dsl.getByType
 import org.timemates.rrpc.codegen.CodeGenerator
 import org.timemates.rrpc.codegen.plugin.data.toOptionDescriptor
-import org.timemates.rrpc.generator.plugin.loader.ProcessPluginService
+import org.timemates.rrpc.gradle.GradleRLogger
+import org.timemates.rrpc.gradle.loadAsPlugins
+import javax.inject.Inject
 
 public abstract class RRpcGeneratorHelpTask : DefaultTask() {
 
@@ -22,14 +32,33 @@ public abstract class RRpcGeneratorHelpTask : DefaultTask() {
     @get:InputFiles
     public abstract val rrpcPluginsDeps: ConfigurableFileCollection
 
+    @get:Nested
+    public abstract val launcher: Property<JavaLauncher>
+
+    @get:Inject
+    protected abstract val javaToolchainService: JavaToolchainService
+
+    @get:Input
+    internal abstract val options: MapProperty<ModuleIdentifier, Map<String, Any>>
+
+    init {
+        val toolchain = project.extensions.getByType<JavaPluginExtension>().toolchain
+        val defaultLauncher = javaToolchainService.launcherFor(toolchain)
+        launcher.convention(defaultLauncher)
+    }
+
     @TaskAction
     public fun showHelp() {
-        logger.lifecycle("Running rrpcGeneratorHelp... 222")
-
+        val launcher = launcher.get()
+        val rlogger = GradleRLogger(logger, "rrpc-generator")
         rrpcPluginsDeps.asFileTree.files.forEach { it.setExecutable(true) }
 
         runBlocking {
-            val plugins = rrpcPluginsDeps.loadAsPlugins()
+            val pluginsConfiguration = project.configurations.getByName("rrpcPluginsDependencies")
+
+            val plugins = pluginsConfiguration.resolvedConfiguration.resolvedArtifacts.filter {
+                it.moduleVersion.id.module in options.get().keys
+            }.loadAsPlugins(rlogger, launcher, options.get())
 
             logger.lifecycle("====================[ rrpc ]====================")
             logger.lifecycle("                Generator Overview               ")
@@ -77,15 +106,5 @@ public abstract class RRpcGeneratorHelpTask : DefaultTask() {
 
             plugins.forEach { it.finish() }
         }
-    }
-
-    private suspend fun ConfigurableFileCollection.loadAsPlugins(): List<ProcessPluginService> = coroutineScope {
-        files.map { artifact ->
-            async(Dispatchers.IO) {
-                ProcessPluginService.load(
-                    listOf(artifact.absolutePath)
-                )
-            }
-        }.awaitAll()
     }
 }

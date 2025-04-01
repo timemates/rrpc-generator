@@ -5,12 +5,17 @@ import org.timemates.rrpc.codegen.schema.RSExtend
 import org.timemates.rrpc.codegen.schema.RSField
 import org.timemates.rrpc.codegen.schema.RSFile
 import org.timemates.rrpc.codegen.schema.RSNode
+import org.timemates.rrpc.codegen.schema.RSOneOf
 import org.timemates.rrpc.codegen.schema.RSRpc
 import org.timemates.rrpc.codegen.schema.RSService
 import org.timemates.rrpc.codegen.schema.RSType
 
 public abstract class RSEmptyVisitor<D, R> : RSVisitor<D, R> {
     public abstract fun defaultHandler(node: RSNode, data: D): R
+
+    override fun visitOneOf(oneOf: RSOneOf, data: D): R {
+        return defaultHandler(oneOf, data)
+    }
 
     override fun visitFile(file: RSFile, data: D): R {
         return defaultHandler(file, data)

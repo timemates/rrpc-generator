@@ -5,7 +5,7 @@ import okio.sink
 import okio.source
 import org.timemates.rrpc.codegen.plugin.PluginService
 
-public suspend fun main(args: Array<String>): Unit {
+public suspend fun main(args: Array<String>) {
     PluginService.main(
         args = args.asList(),
         input = System.`in`.source().buffer(),

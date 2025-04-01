@@ -6,7 +6,7 @@ import org.timemates.rrpc.codegen.schema.annotations.NonPlatformSpecificAccess
 import org.timemates.rrpc.codegen.schema.value.RSDeclarationUrl
 
 @Serializable
-public class RSRpc(
+public data class RSRpc(
     /**
      * The name of RPC.
      *
@@ -48,15 +48,25 @@ public class RSRpc(
     public fun languageSpecificName(language: Language): String {
         @OptIn(NonPlatformSpecificAccess::class)
         return when (language) {
-            Language.JAVA, Language.KOTLIN, Language.PHP, Language.PYTHON ->
-                name.replaceFirstChar { it.lowercase() }
-            else -> TODO()
+            Language.JAVA, Language.KOTLIN, Language.PYTHON, Language.GO ->
+                name.replaceFirstChar { it.lowercase() } // camelCase
+
+            Language.PHP, Language.RUBY ->
+                name.replace(Regex("([a-z])([A-Z])"), "$1_$2").lowercase() // snake_case
+
+            Language.C_SHARP ->
+                name.replaceFirstChar { it.uppercase() }
         }
     }
 }
 
-public fun RSRpc.javaName(): String = languageSpecificName(Language.JAVA)
-public fun RSRpc.kotlinName(): String = languageSpecificName(Language.KOTLIN)
+public val RSRpc.javaName get() = languageSpecificName(Language.JAVA)
+public val RSRpc.kotlinName get() = languageSpecificName(Language.KOTLIN)
+public val RSRpc.pythonName get() = languageSpecificName(Language.PYTHON)
+public val RSRpc.goName get() = languageSpecificName(Language.GO)
+public val RSRpc.phpName get() = languageSpecificName(Language.PHP)
+public val RSRpc.rubyName get() = languageSpecificName(Language.RUBY)
+public val RSRpc.csharpName get() = languageSpecificName(Language.C_SHARP)
 
 public val RSRpc.isRequestResponse: Boolean get() = !requestType.isStreaming && !responseType.isStreaming
 public val RSRpc.isRequestStream: Boolean get() = !requestType.isStreaming && responseType.isStreaming
