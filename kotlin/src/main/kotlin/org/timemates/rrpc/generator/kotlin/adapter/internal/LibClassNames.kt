@@ -26,6 +26,10 @@ internal object LibClassNames {
         val requestStream = base.nestedClass("RequestStream")
 
         val requestChannel = base.nestedClass("RequestChannel")
+
+        val fireAndForget = base.nestedClass("FireAndForget")
+
+        val metadataPush = base.nestedClass("MetadataPush")
     }
 
     object Option {

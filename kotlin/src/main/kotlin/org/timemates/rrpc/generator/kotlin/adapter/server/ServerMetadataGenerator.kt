@@ -12,6 +12,8 @@ import org.timemates.rrpc.codegen.schema.isRequestStream
 import org.timemates.rrpc.codegen.schema.kotlinName
 import org.timemates.rrpc.generator.kotlin.adapter.internal.LibClassNames
 import org.timemates.rrpc.codegen.schema.annotations.NonPlatformSpecificAccess
+import org.timemates.rrpc.codegen.schema.isFireAndForget
+import org.timemates.rrpc.codegen.schema.isMetadataPush
 import org.timemates.rrpc.generator.kotlin.KGFileContext
 import org.timemates.rrpc.generator.kotlin.adapter.internal.ext.asClassName
 import org.timemates.rrpc.generator.kotlin.adapter.internal.ext.newline
@@ -43,6 +45,8 @@ public object ServerMetadataGenerator {
                             rpc.isRequestResponse -> LibClassNames.ProcedureDescriptor.requestResponse
                             rpc.isRequestStream -> LibClassNames.ProcedureDescriptor.requestStream
                             rpc.isRequestChannel -> LibClassNames.ProcedureDescriptor.requestChannel
+                            rpc.isFireAndForget -> LibClassNames.ProcedureDescriptor.fireAndForget
+                            rpc.isMetadataPush -> LibClassNames.ProcedureDescriptor.metadataPush
                             else -> error("Unsupported type of request for ${service.name}#${rpc.name}")
                         }
 
@@ -53,11 +57,21 @@ public object ServerMetadataGenerator {
                         @OptIn(NonPlatformSpecificAccess::class)
                         add("name = %S", rpc.name)
                         newline(",")
-                        add("inputSerializer = %T.serializer()", requestType)
-                        newline(",")
-                        add("outputSerializer = %T.serializer()", responseType)
-                        newline(",")
-                        add("procedure = { context, data -> %L(context, data) }", rpc.kotlinName)
+                        if (!rpc.isMetadataPush) {
+                            add("inputSerializer = %T.serializer()", requestType)
+                            newline(",")
+                        }
+
+                        if (!rpc.isMetadataPush || !rpc.isFireAndForget) {
+                            add("outputSerializer = %T.serializer()", responseType)
+                            newline(",")
+                        }
+
+                        if (!rpc.isMetadataPush || !rpc.isFireAndForget) {
+                            add("procedure = { context, data -> %L(context, data) }", rpc.kotlinName)
+                        } else {
+                            add("procedure = { context -> %L(context) }", rpc.kotlinName)
+                        }
                         newline(",")
 
                         add("options = ")
