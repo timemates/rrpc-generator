@@ -5,6 +5,7 @@ import org.timemates.rrpc.codegen.typemodel.PoetAnnotations
 import org.timemates.rrpc.generator.kotlin.adapter.internal.LibClassNames
 import org.timemates.rrpc.codegen.schema.RSResolver
 import org.timemates.rrpc.codegen.schema.RSType
+import org.timemates.rrpc.generator.kotlin.adapter.ExtendGenerator
 import org.timemates.rrpc.generator.kotlin.adapter.internal.ext.asClassName
 import org.timemates.rrpc.generator.kotlin.adapter.types.TypeGenerator
 
@@ -37,7 +38,17 @@ internal object  MessageTypeGenerator {
             )
             .addType(
                 MessageCompanionObjectGenerator.generateCompanionObject(
-                    className, nested, generateCreateFun, incoming.typeUrl,
+                    className = className,
+                    nested = nested,
+                    options = incoming.nestedExtends.flatMap {
+                        ExtendGenerator.generateExtend(
+                            extend = it,
+                            resolver = resolver,
+                            topLevel = false
+                        )
+                    },
+                    generateCreateFun = generateCreateFun,
+                    typeUrl = incoming.typeUrl,
                 )
             )
             .addTypes(nested.map(TypeGenerator.Result::typeSpec))

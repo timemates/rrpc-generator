@@ -9,6 +9,7 @@ internal object MessageCompanionObjectGenerator {
     fun generateCompanionObject(
         className: ClassName,
         nested: List<TypeGenerator.Result>,
+        options: List<PropertySpec>,
         generateCreateFun: Boolean,
         typeUrl: RSDeclarationUrl,
     ): TypeSpec {
@@ -26,6 +27,7 @@ internal object MessageCompanionObjectGenerator {
                     .initializer("%S", typeUrl.value)
                     .build()
             )
+            .addProperties(options)
             .addFunctions(nested.mapNotNull(TypeGenerator.Result::constructorFun))
             .apply {
                 if (generateCreateFun) {

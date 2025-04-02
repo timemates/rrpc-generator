@@ -127,7 +127,7 @@ private val BASIC_REQUEST_CODE = """
 
 private val FIRE_AND_FORGET_CODE = """
         return handler.fireAndForget(
-                %1T(
+                metadata= %1T(
                     serviceName = %2S,
                     procedureName = %3S,
                     extra = %4T(extra),
@@ -140,7 +140,7 @@ private val FIRE_AND_FORGET_CODE = """
 
 private val METADATA_PUSH_CODE = """
         return handler.metadataPush(
-                %1T(
+                metadata= %1T(
                     serviceName = %2S,
                     procedureName = %3S,
                     extra = %4T(extra),

@@ -4,6 +4,7 @@ import com.squareup.kotlinpoet.FunSpec
 import com.squareup.kotlinpoet.TypeSpec
 import org.timemates.rrpc.codegen.schema.RSResolver
 import org.timemates.rrpc.codegen.schema.RSType
+import org.timemates.rrpc.codegen.schema.sourceOnly
 import org.timemates.rrpc.codegen.schema.value.RSDeclarationUrl
 import org.timemates.rrpc.generator.kotlin.adapter.types.message.MessageTypeGenerator
 
@@ -14,8 +15,7 @@ internal object TypeGenerator {
         incoming: RSType,
         resolver: RSResolver,
     ): Result? {
-        if (incoming.typeUrl == RSDeclarationUrl.ACK)
-        // ignore timemates.rrpc.Ack – it's type-marker
+        if (incoming.options.sourceOnly)
             return null
 
         return when (incoming) {

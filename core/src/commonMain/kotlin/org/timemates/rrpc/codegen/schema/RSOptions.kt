@@ -1,6 +1,8 @@
 package org.timemates.rrpc.codegen.schema
 
 import kotlinx.serialization.Serializable
+import org.timemates.rrpc.codegen.annotation.ExperimentalGeneratorFunctionality
+import org.timemates.rrpc.codegen.option.ExtensionGenerationStrategy
 import org.timemates.rrpc.codegen.schema.value.RSDeclarationUrl
 import kotlin.jvm.JvmInline
 
@@ -38,5 +40,18 @@ public value class RSOptions(
 }
 
 public val RSOptions.isDeprecated: Boolean get() = (this[RSOption.DEPRECATED]?.value as? RSOption.Value.Raw)?.string?.toBooleanStrictOrNull() ?: false
-public val RSOptions.isRetentionSource: Boolean get() = (this[RSOption.RETENTION]?.value as? RSOption.Value.Raw)?.string == "RETENTION_SOURCE"
+
+public val RSOptions.sourceOnly: Boolean get() = (this[RSOption.RETENTION]?.value as? RSOption.Value.Raw)?.string == "RETENTION_SOURCE"
+    || get(RSOption.SOURCE_ONLY_MESSAGE)?.value?.toString() == "true"
+    || get(RSOption.SOURCE_ONLY_ENUM)?.value?.toString() == "true"
+
 public val RSOptions.isRetentionRuntime: Boolean get() = (this[RSOption.RETENTION]?.value as? RSOption.Value.Raw)?.string != "RETENTION_SOURCE"
+
+/**
+ * The decision of how to generate is dependent on the context. Read the documentation of
+ * [ExtensionGenerationStrategy] to learn more.
+ */
+@ExperimentalGeneratorFunctionality
+public val RSOptions.extensionGenerationStrategy: ExtensionGenerationStrategy?
+    get() = (this[RSOption.RETENTION]?.value as? RSOption.Value.Raw)?.string
+        ?.let { ExtensionGenerationStrategy.valueOf(it) }

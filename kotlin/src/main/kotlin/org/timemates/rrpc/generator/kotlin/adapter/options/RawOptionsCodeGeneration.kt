@@ -6,7 +6,7 @@ import org.timemates.rrpc.codegen.exception.UnresolvableFileException
 import org.timemates.rrpc.codegen.exception.UnresolvableReferenceException
 import org.timemates.rrpc.codegen.schema.RSOptions
 import org.timemates.rrpc.codegen.schema.RSResolver
-import org.timemates.rrpc.codegen.schema.isRetentionSource
+import org.timemates.rrpc.codegen.schema.sourceOnly
 import org.timemates.rrpc.codegen.schema.kotlinPackage
 import org.timemates.rrpc.codegen.schema.value.RSDeclarationUrl
 import org.timemates.rrpc.codegen.schema.value.RSPackageName
@@ -26,7 +26,7 @@ internal object RawOptionsCodeGeneration {
             val field = resolver.resolveField(option.fieldUrl)
                 ?: throw UnresolvableReferenceException(option.fieldUrl, context.location)
 
-            if (field.options.isRetentionSource)
+            if (field.options.sourceOnly)
                 return@mapNotNull null
 
             option to field

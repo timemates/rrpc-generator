@@ -7,11 +7,12 @@ import org.timemates.rrpc.generator.kotlin.adapter.internal.LibClassNames
 import org.timemates.rrpc.codegen.schema.RSExtend
 import org.timemates.rrpc.codegen.schema.RSOptions
 import org.timemates.rrpc.codegen.schema.RSResolver
-import org.timemates.rrpc.codegen.schema.isRetentionSource
+import org.timemates.rrpc.codegen.schema.sourceOnly
 import org.timemates.rrpc.codegen.schema.value.RSDeclarationUrl
+import org.timemates.rrpc.generator.kotlin.adapter.options.OptionGenerator
 
 public object ExtendGenerator {
-    public fun generateExtend(extend: RSExtend, resolver: RSResolver): List<PropertySpec> {
+    public fun generateExtend(extend: RSExtend, resolver: RSResolver, topLevel: Boolean): List<PropertySpec> {
         return when (extend.typeUrl) {
             // we don't support for now options generation for anything except methods, files and services.
             RSOptions.FIELD_OPTIONS,
@@ -25,13 +26,14 @@ public object ExtendGenerator {
             RSOptions.FILE_OPTIONS,
             RSOptions.SERVICE_OPTIONS,
                 -> extend.fields.mapNotNull {
-                    if (it.options.isRetentionSource)
+                    if (it.options.sourceOnly)
                         return@mapNotNull null
 
                 OptionGenerator.generateOption(
                     field = it,
                     type = getClassNameFromExtendType(extend.typeUrl),
                     resolver = resolver,
+                    topLevel = true,
                 )
             }
 

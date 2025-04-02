@@ -2,8 +2,6 @@ package org.timemates.rrpc.codegen.schema
 
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.protobuf.ProtoNumber
-import kotlinx.serialization.protobuf.ProtoOneOf
-import kotlin.jvm.JvmInline
 
 
 @Serializable
@@ -36,6 +34,12 @@ public class RSOption(
     public companion object {
         public val DEPRECATED: RSTypeMemberUrl = RSTypeMemberUrl(RSOptions.METHOD_OPTIONS, "deprecated")
         public val RETENTION: RSTypeMemberUrl = RSTypeMemberUrl(RSOptions.FIELD_OPTIONS, "retention")
+        public val SOURCE_ONLY_MESSAGE: RSTypeMemberUrl =
+            RSTypeMemberUrl(RSOptions.MESSAGE_OPTIONS, "timemates.rrpc.internal.source_only_message")
+        public val SOURCE_ONLY_ENUM: RSTypeMemberUrl =
+            RSTypeMemberUrl(RSOptions.ENUM_OPTIONS, "timemates.rrpc.internal.source_only_enum")
+        public val EXTENSION_GENERATION_STRATEGY: RSTypeMemberUrl =
+            RSTypeMemberUrl(RSOptions.ENUM_OPTIONS, "timemates.rrpc.internal.extension_generation_strategy")
     }
 
     @Serializable

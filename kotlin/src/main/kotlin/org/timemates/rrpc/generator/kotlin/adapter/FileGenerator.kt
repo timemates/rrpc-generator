@@ -30,7 +30,11 @@ internal object FileGenerator {
             addFileComment(Constant.GENERATED_COMMENT)
 
             file.extends.forEach {
-                ExtendGenerator.generateExtend(it, resolver).forEach(::addProperty)
+                ExtendGenerator.generateExtend(
+                    extend = it,
+                    resolver = resolver,
+                    topLevel = true
+                ).forEach(::addProperty)
             }
 
             if (serverGeneration && file.services.isNotEmpty()) {
