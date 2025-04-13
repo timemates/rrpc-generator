@@ -1,7 +1,7 @@
 [versions]
 kotlin = "2.0.21"
 kotlinx-coroutines = "1.9.0"
-kotlinx-serialization = "1.8.0"
+kotlinx-serialization = "1.8.1"
 ktor = "2.3.12"
 jupiter = "5.4.0"
 exposed = "0.41.1"
@@ -14,6 +14,7 @@ flowmvi = "3.1.0-beta02"
 clikt = "5.0.1"
 graalvm = "0.10.3"
 rrpc-kotlin = "1.0.0-dev11"
+zacsweers-kctfork = "0.7.0"
 
 [libraries]
 # kotlinx libraries
@@ -45,6 +46,8 @@ kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotl
 kotlin-test-junit = { module = "org.jetbrains.kotlin:kotlin-test-junit", version.ref = "kotlin" }
 
 junit-jupiter = { module = "org.junit.jupiter:junit-jupiter-engine", version.ref = "jupiter" }
+
+kotlin-compile-testing = { module = "dev.zacsweers.kctfork:core", version.ref = "zacsweers-kctfork" }
 
 # Other Multiplatform Libraries
 cache4k = { module = "io.github.reactivecircus.cache4k:cache4k", version.require="0.9.0" }
@@ -103,7 +106,9 @@ bonsai-core = { module = "cafe.adriel.bonsai:bonsai-core", version.require = "1.
 reactor-core = { module = "io.projectreactor:reactor-core", version.require = "3.7.0" }
 
 # rRPC
-rrpc-schema = { module = "org.timemates.rrpc:common-schema", version.ref = "rrpc-kotlin" }
+timemates-rrpc-server = { module = "app.timemate.rrpc:server-core", version.ref = "rrpc-kotlin" }
+timemates-rrpc-client = { module = "app.timemate.rrpc:client-core", version.ref = "rrpc-kotlin" }
+timemates-rrpc-common = { module = "app.timemate.rrpc:common-core", version.ref = "rrpc-kotlin" }
 
 [plugins]
 # Build Conventions

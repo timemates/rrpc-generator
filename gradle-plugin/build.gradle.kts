@@ -2,9 +2,10 @@ plugins {
     `kotlin-dsl`
     alias(libs.plugins.gradle.publish)
     id(libs.plugins.conventions.library.get().pluginId)
+    `java-gradle-plugin`
 }
 
-group = "org.timemates.rrpc"
+group = "app.timemate.rrpc"
 version = System.getenv("LIB_VERSION") ?: "SNAPSHOT"
 
 kotlin {
@@ -12,12 +13,8 @@ kotlin {
 }
 
 dependencies {
-//    constraints {
-//        api("org.timemates.rrpc.generator:kotlin:$version")
-//    }
-
     // -- Project --
-    implementation(projects.core)
+    implementation(projects.generatorCore)
     implementation(projects.pluginLoader)
 
     // -- Coroutines --
@@ -26,28 +23,35 @@ dependencies {
     // -- Libraries --
     implementation(libs.kotlin.plugin)
     implementation(libs.squareup.okio)
+
+    // -- Tests --
+    testImplementation(libs.junit.jupiter)
+    testImplementation(gradleTestKit())
 }
 
 
 gradlePlugin {
-    website = "https://github.com/rrpc-generator"
-    vcsUrl = "https://github.com/rrpc-generator"
+    website = "https://github.com/timemates/rrpc-generator"
+    vcsUrl = "https://github.com/timemates/rrpc-generator"
+
+    pluginSourceSet(sourceSets.main.get())
+    testSourceSets(sourceSets.test.get())
 
     plugins {
         create("rrpc-plugin") {
-            id = "org.timemates.rrpc"
+            id = "app.timemate.rrpc"
             displayName = "RRpc Code Generator"
             description = "Code Generator from .proto files to Kotlin code."
             tags = listOf("kotlin", "rsocket", "protobuf", "proto")
 
-            implementationClass = "org.timemates.rrpc.gradle.RRpcGenerationGradlePlugin"
+            implementationClass = "app.timemate.rrpc.gradle.RRpcGenerationGradlePlugin"
         }
     }
 }
 
 mavenPublishing {
     coordinates(
-        groupId = "org.timemates.rrpc",
+        groupId = "app.timemate.rrpc",
         artifactId = "gradle-plugin",
         version = System.getenv("LIB_VERSION") ?: return@mavenPublishing,
     )
@@ -56,4 +60,9 @@ mavenPublishing {
         name.set("RRpc Generator Gradle Plugin")
         description.set("Code-generation library for RRpc servers and clients.")
     }
+}
+
+
+tasks.named<Test>("test") {
+    useJUnitPlatform()
 }

@@ -7,11 +7,11 @@ In addition, it has [CLI](https://rrpc.timemates.org/codegen-cli.html) and
 Under prototyping, currently unavailable to use.
 
 ## Supported languages
-- **Kotlin**
+- **Kotlin** (in [rrpc-kotlin repository](https://github.com/timemates/rrpc-kotlin/generator))
 
 ## Documentation
 
-You can learn more about the library in official documentation – [https://rrpc.timemates.org](https://rrpc.timemates.org/section-starting-page.html).
+You can learn more about the rrpc in official [documentation](https://timemates.github.io/rrpc-kotlin-docs/section-starting-page.html).
 
 ## Feedback
 

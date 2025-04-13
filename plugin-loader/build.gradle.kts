@@ -4,12 +4,14 @@ plugins {
 }
 
 dependencies {
-    // -- Okio --
+    // -- Project --
+    api(projects.pluginApi)
+
+    // -- FileSystem --
     implementation(libs.squareup.okio)
 
-    // -- Generators --
-    implementation(projects.core)
-    implementation(projects.kotlin)
+    // -- Proto Parser --
+    implementation(libs.squareup.wire.schema)
 
     // -- JNA --
     implementation(libs.net.java.jna)
@@ -22,12 +24,11 @@ dependencies {
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.kotlin.test)
     testImplementation(libs.mockk)
-    testImplementation(projects.kotlin)
 }
 
 mavenPublishing {
     coordinates(
-        groupId = "org.timemates.rrpc",
+        groupId = "app.timemate.rrpc",
         artifactId = "generator-plugin-loader",
         version = System.getenv("LIB_VERSION") ?: return@mavenPublishing,
     )

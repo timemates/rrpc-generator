@@ -12,8 +12,7 @@ dependencies {
     implementation(libs.squareup.okio)
 
     // -- Generators --
-    implementation(projects.core)
-    implementation(projects.kotlin)
+    implementation(projects.generatorCore)
     implementation(projects.pluginLoader)
 
     // -- JNA --
@@ -28,18 +27,17 @@ dependencies {
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.kotlin.test)
     testImplementation(libs.mockk)
-    testImplementation(projects.kotlin)
 }
 
 application {
     applicationName = "rrgcli"
-    mainClass = "org.timemates.rrpc.generator.cli.RRpcGeneratorMain"
+    mainClass = "app.timemate.rrpc.generator.cli.RRpcGeneratorMain"
 }
 
 graalvmNative {
     binaries {
         named("main") {
-            mainClass = "org.timemates.rrpc.generator.cli.MainKt"
+            mainClass = "app.timemate.rrpc.generator.cli.MainKt"
             buildArgs.addAll(
                 "--initialize-at-build-time=kotlin.DeprecationLevel",
                 "-H:ReflectionConfigurationFiles=${project.layout.projectDirectory.dir("src/main/resources/META-INF/native-image/reflect-config.json")}",
