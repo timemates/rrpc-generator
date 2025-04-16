@@ -1,5 +1,9 @@
 package app.timemate.rrpc.gradle.configuration
 
+import app.timemate.rrpc.gradle.configuration.type.GenerationPlugin
+import app.timemate.rrpc.gradle.configuration.type.PluginOptions
+import app.timemate.rrpc.gradle.toStringValueRepresentative
+
 
 /**
  * Configures generation options.
@@ -17,8 +21,8 @@ package app.timemate.rrpc.gradle.configuration
  * }
  * ```
  */
-public class PluginOptionsBuilder(
-    private val options: MutableMap<String, Any>,
+public class PluginOptionsBuilder internal constructor(
+    private val options: MutableMap<String, PluginOptions.OptionValue>,
 ) {
     /**
      * Accepts either object list of permitted types or just permitted type. If
@@ -38,11 +42,13 @@ public class PluginOptionsBuilder(
     public fun option(key: String, value: Any) {
         if (options.containsKey(key)) {
             val newValue = if (options[key] is List<*>) {
-                (options[key] as List<*>) + value
+                PluginOptions.OptionValue.Multiple(((options[key] as List<*>) + value).map { it.toStringValueRepresentative() })
             } else {
-                options[key] = listOf(options[key], value)
+                PluginOptions.OptionValue.Multiple(listOf(options[key].toStringValueRepresentative(), value.toStringValueRepresentative()))
             }
             options.put(key, newValue)
+        } else {
+            options.put(key, PluginOptions.OptionValue.Single(value.toStringValueRepresentative()))
         }
     }
 }

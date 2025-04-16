@@ -25,7 +25,7 @@ public data class RSFile private constructor(
      * - [goPackage]
      */
     @ProtoNumber(2)
-    public val packageName: RSPackageName?,
+    public val packageName: RSPackageName = RSPackageName.EMPTY,
 
     /**
      * File-level options of the file.
@@ -62,7 +62,7 @@ public data class RSFile private constructor(
 ) : RSNode {
     public constructor(
         name: String,
-        packageName: RSPackageName? = null,
+        packageName: RSPackageName = RSPackageName.EMPTY,
         options: RSOptions = RSOptions.EMPTY,
         services: List<RSService> = emptyList(),
         extends: List<RSExtend> = emptyList(),
@@ -123,13 +123,17 @@ public data class RSFile private constructor(
         result
     }
 
+    public val allEnums: List<RSEnum> by lazy {
+        enums + types.flatMap { it.allEnums }
+    }
+
     public val allExtends: List<RSExtend> by lazy {
         extends + allTypes.flatMap { it.allExtends }
     }
 
     public fun copy(
         name: String = this.name,
-        packageName: RSPackageName? = this.packageName,
+        packageName: RSPackageName = this.packageName,
         options: RSOptions = this.options,
         services: List<RSService> = this.services,
         extends: List<RSExtend> = this.extends,

@@ -6,6 +6,7 @@ import kotlinx.serialization.protobuf.ProtoPacked
 import okio.Path
 import okio.Path.Companion.toPath
 import app.timemate.rrpc.generator.plugin.api.GenerationOptions.Companion.PERMIT_PACKAGE_CYCLES
+import kotlin.jvm.JvmInline
 
 /**
  * A set of options for code generation, represented as a map of option names to values.
@@ -125,7 +126,7 @@ public value class GenerationOptions private constructor(private val map: Map<St
     }
 
     @Serializable
-    internal class OptionValue(
+    internal data class OptionValue(
         @ProtoNumber(1)
         val single: String = "",
         @ProtoPacked

@@ -22,6 +22,7 @@ import app.timemate.rrpc.gradle.GradleRLogger
 import app.timemate.rrpc.gradle.collectArtifactFiles
 import app.timemate.rrpc.gradle.configuration.type.GenerationPlugin
 import app.timemate.rrpc.gradle.loadAsPlugins
+import org.gradle.api.tasks.Input
 import javax.inject.Inject
 
 public abstract class RRpcGeneratorHelpTask : DefaultTask() {
@@ -41,7 +42,7 @@ public abstract class RRpcGeneratorHelpTask : DefaultTask() {
     @get:Inject
     protected abstract val javaToolchainService: JavaToolchainService
 
-    @get:Internal
+    @get:Input
     internal abstract val plugins: ListProperty<GenerationPlugin>
 
     init {
@@ -66,11 +67,9 @@ public abstract class RRpcGeneratorHelpTask : DefaultTask() {
             val pluginsConfiguration = project.configurations.getByName("rrpcPlugin")
 
             val loadedPlugins = plugins.flatMap { plugin ->
-                when (plugin.dependency) {
-                    is Provider<*> -> (plugin.dependency.get() as Dependency).collectArtifactFiles(pluginsConfiguration)
-                    is Dependency -> plugin.dependency.collectArtifactFiles(pluginsConfiguration)
-                    else -> error("Unknown dependency type: ${plugin.dependency}")
-                }
+                plugin.dependency.collectArtifactFiles(
+                    pluginsConfiguration
+                )
             }.loadAsPlugins(rLogger, launcher)
 
             logger.lifecycle("====================[ rrpc ]====================")

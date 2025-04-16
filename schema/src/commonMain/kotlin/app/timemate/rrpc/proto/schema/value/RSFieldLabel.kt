@@ -4,7 +4,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.protobuf.ProtoNumber
 
 @Serializable
-public enum class FieldLabel {
+public enum class RSFieldLabel {
     @ProtoNumber(0)
     NONE,
     @ProtoNumber(1)

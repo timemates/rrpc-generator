@@ -19,6 +19,7 @@ import app.timemate.rrpc.proto.schema.RSField
 import app.timemate.rrpc.proto.schema.RSMessage
 import app.timemate.rrpc.proto.schema.RSService
 import app.timemate.rrpc.proto.schema.RSType
+import app.timemate.rrpc.proto.schema.value.RSFieldLabel
 import app.timemate.rrpc.proto.schema.value.LocationPath
 
 internal fun ProtoType.asRSTypeUrl(): RSDeclarationUrl {
@@ -70,8 +71,11 @@ internal fun Field.asRSField(): RSField {
         options = options.asRSOptions(),
         documentation = documentation,
         typeUrl = type!!.asRSTypeUrl(),
-        isRepeated = isRepeated,
-        isInOneOf = isOneOf,
+        label = when (label) {
+            Field.Label.REPEATED -> RSFieldLabel.REPEATED
+            Field.Label.ONE_OF -> RSFieldLabel.ONE_OF
+            else -> RSFieldLabel.NONE
+        },
         isExtension = isExtension,
         location = location.asRSElementLocation(),
         namespacesList = namespaces,
@@ -202,7 +206,7 @@ internal fun Service.asRSService(): RSService {
 internal fun ProtoFile.asRSFile(): RSFile {
     return RSFile(
         name = name(),
-        packageName = packageName?.let { RSPackageName(it) },
+        packageName = packageName?.let { RSPackageName(it) } ?: RSPackageName.EMPTY,
         options = options.asRSOptions(),
         services = services.map { it.asRSService() },
         types = types.map { it.asRSType() },

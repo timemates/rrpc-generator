@@ -18,13 +18,7 @@ dependencies {
     commonMainImplementation(libs.kotlinx.coroutines)
 
     // -- SquareUp --
-    commonMainImplementation(libs.squareup.wire.schema)
-    commonMainImplementation(libs.squareup.kotlinpoet)
     commonMainImplementation(libs.squareup.okio)
-
-    // -- Test --
-    commonTestImplementation(libs.kotlin.test)
-    commonTestImplementation(libs.squareup.okio.fakeFs)
 }
 
 

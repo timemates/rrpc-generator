@@ -1,6 +1,7 @@
 package app.timemate.rrpc.proto.schema.value
 
 import kotlinx.serialization.Serializable
+import kotlin.jvm.JvmInline
 
 @Serializable
 @JvmInline

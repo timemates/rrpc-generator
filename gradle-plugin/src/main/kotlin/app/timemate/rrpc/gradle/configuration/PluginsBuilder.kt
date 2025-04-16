@@ -15,6 +15,8 @@ import org.gradle.api.provider.Provider
 import org.gradle.internal.os.OperatingSystem
 import app.timemate.rrpc.gradle.configuration.type.GenerationPlugin
 import app.timemate.rrpc.gradle.configuration.type.PluginDependencyType
+import app.timemate.rrpc.gradle.configuration.type.PluginOptions
+import org.gradle.api.file.FileCollection
 import java.io.File
 
 public class PluginsBuilder internal constructor(
@@ -88,10 +90,10 @@ public class PluginsBuilder internal constructor(
         optionsBuilder: PluginOptionsBuilder.() -> Unit = {},
     ) {
         val dependency = resolveDependency(notation, type)
-        val options = mutableMapOf<String, Any>().apply {
+        val options = mutableMapOf<String, PluginOptions.OptionValue>().apply {
             PluginOptionsBuilder(this).apply(optionsBuilder)
         }.toMap()
-        val generationPlugin = GenerationPlugin(dependency, options)
+        val generationPlugin = GenerationPlugin(dependency, PluginOptions(options))
         plugins.add(generationPlugin)
         project.dependencies.add(configuration.name, dependency)
     }
@@ -158,7 +160,7 @@ public class PluginsBuilder internal constructor(
      * @param type The type of dependency being resolved. It determines whether the binary classifier should be applied.
      * @return The resolved [Dependency] object, which is used by Gradle to manage the dependency in the build.
      */
-    private fun resolveDependency(notation: Any, type: PluginDependencyType): Any {
+    private fun resolveDependency(notation: Any, type: PluginDependencyType): Dependency {
         val (osClassifier, fileExtension) = if (type == PluginDependencyType.BINARY)
             getBinaryClassifierAndExtension()
         else
@@ -186,11 +188,7 @@ public class PluginsBuilder internal constructor(
 
         return when (notation) {
             is Provider<*> -> {
-                notation.map { notation ->
-                    project.dependencies.create(resolveDependency(notation, type)).also {
-                        configureClassifierIfBinary(it)
-                    }
-                }
+                resolveDependency(notation.get(), type)
             }
 
             is String -> {
@@ -209,8 +207,7 @@ public class PluginsBuilder internal constructor(
                         append(notation.version)
                     }
                 }
-                val dep = project.dependencies.create(coords)
-                configureClassifierIfBinary(dep)
+                configureClassifierIfBinary(project.dependencies.create(coords))
             }
 
             is ProjectDependency -> notation
@@ -225,7 +222,9 @@ public class PluginsBuilder internal constructor(
                 configureClassifierIfBinary(dep)
             }
 
-            is FileCollectionDependency -> {
+            is FileCollectionDependency -> resolveDependency(notation.files, type)
+
+            is FileCollection -> {
                 if (type == PluginDependencyType.BINARY) {
                     val updatedFiles = notation.files.map { file ->
                         if (file.extension == "jar") return@map file
@@ -243,7 +242,7 @@ public class PluginsBuilder internal constructor(
 
                     project.dependencies.create(project.files(updatedFiles))
                 } else {
-                    notation
+                    project.dependencies.create(notation)
                 }
             }
 

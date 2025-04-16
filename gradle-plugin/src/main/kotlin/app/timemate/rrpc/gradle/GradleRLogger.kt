@@ -30,7 +30,7 @@ internal class GradleRLogger(
     }
 
     override suspend fun debug(message: String) {
-        logger.lifecycle("$header: $message")
+        logger.debug("$header: $message")
     }
 
 }

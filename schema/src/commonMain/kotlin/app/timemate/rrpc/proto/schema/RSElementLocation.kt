@@ -4,6 +4,7 @@ import app.timemate.rrpc.proto.schema.value.LocationPath
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.protobuf.ProtoNumber
 
+@ConsistentCopyVisibility
 @Serializable
 public data class RSElementLocation private constructor(
     @ProtoNumber(1)

@@ -74,7 +74,7 @@ public interface RSResolver {
     /**
      * Resolves all available types in the current [RSResolver].
      *
-     * @return A sequence of all [RSType]s available within this resolver.
+     * @return A sequence of all [RSType]s available within this resolver. Including subtypes.
      */
     public fun resolveAllTypes(): Sequence<RSType>
 
@@ -162,17 +162,15 @@ private class InMemoryRSResolver(
             typesIndex.values
                 .asSequence()
                 .filterIsInstance<RSMessage>()
-                .flatMap {
-                    it.fields
-                }
-                .forEach { field ->
-                    put(RSTypeMemberUrl(field.typeUrl, field.name), field)
+                .forEach { message ->
+                    message.allFields.forEach { field ->
+                        put(RSTypeMemberUrl(message.typeUrl, field.protoQualifiedName), field)
+                    }
                 }
         }
     }
 
     override fun resolveField(typeMemberUrl: RSTypeMemberUrl): RSField? {
-        println(typeMemberUrl)
         return fieldsIndex[typeMemberUrl]
     }
 

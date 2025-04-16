@@ -7,7 +7,6 @@ import org.gradle.kotlin.dsl.create
 import org.jetbrains.kotlin.gradle.plugin.KotlinPlatformType
 import app.timemate.rrpc.gradle.task.GenerateRRpcCodeTask
 import app.timemate.rrpc.gradle.task.RRpcGeneratorHelpTask
-import app.timemate.rrpc.gradle.task.UnpackProtoDependenciesTask
 import org.gradle.kotlin.dsl.register
 
 public class RRpcGenerationGradlePlugin : Plugin<Project> {
@@ -38,24 +37,9 @@ public class RRpcGenerationGradlePlugin : Plugin<Project> {
 
         val extension =
             target.extensions.create<RRpcExtension>("rrpc", target, sourceProtoDeps, contextProtoDeps, rrpcPluginsDeps)
-
-        val unpackTask = target.tasks.register<UnpackProtoDependenciesTask>("unpackProtoDependencies") {
+        target.tasks.register<GenerateRRpcCodeTask>("generateRRpcCode") {
             this.inputs.set(extension.inputs)
             this.inputFolders.from(extension.inputFolders)
-            this.contextDependencies.from(contextProtoDeps.incoming.files)
-            this.sourceDependencies.from(sourceProtoDeps.incoming.files)
-            this.dependenciesOutputDirectory.set(project.layout.buildDirectory.dir("extracted/rrpc-deps"))
-
-            doFirst {
-                contextProtoDeps.resolve()
-                sourceProtoDeps.resolve()
-            }
-        }
-
-        target.tasks.register<GenerateRRpcCodeTask>("generateRRpcCode") {
-            dependsOn(unpackTask)
-
-            this.dependenciesProtoFolder.fileProvider(unpackTask.map { it.dependenciesOutputDirectory.asFile.get() })
             this.permitPackageCycles.set(extension.permitPackageCycles)
             this.plugins.addAll(extension.registeredPlugins)
             this.contextProtoDeps.from(contextProtoDeps.incoming.files)

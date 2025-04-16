@@ -37,11 +37,11 @@ public data class RSOption private constructor(
         public val DEPRECATED: RSTypeMemberUrl = RSTypeMemberUrl(RSOptions.METHOD_OPTIONS, "deprecated")
         public val RETENTION: RSTypeMemberUrl = RSTypeMemberUrl(RSOptions.FIELD_OPTIONS, "retention")
         public val SOURCE_ONLY_MESSAGE: RSTypeMemberUrl =
-            RSTypeMemberUrl(RSOptions.MESSAGE_OPTIONS, "timemates.rrpc.internal.source_only_message")
+            RSTypeMemberUrl(RSOptions.MESSAGE_OPTIONS, "timemate.rrpc.internal.source_only_message")
         public val SOURCE_ONLY_ENUM: RSTypeMemberUrl =
-            RSTypeMemberUrl(RSOptions.ENUM_OPTIONS, "timemates.rrpc.internal.source_only_enum")
+            RSTypeMemberUrl(RSOptions.ENUM_OPTIONS, "timemate.rrpc.internal.source_only_enum")
         public val EXTENSION_GENERATION_STRATEGY: RSTypeMemberUrl =
-            RSTypeMemberUrl(RSOptions.ENUM_OPTIONS, "timemates.rrpc.internal.extension_generation_strategy")
+            RSTypeMemberUrl(RSOptions.ENUM_OPTIONS, "timemate.rrpc.internal.extension_generation_strategy")
     }
 
     @Serializable

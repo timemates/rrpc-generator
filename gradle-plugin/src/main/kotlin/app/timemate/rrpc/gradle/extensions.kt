@@ -36,12 +36,14 @@ internal suspend fun List<File>.loadAsPlugins(
         }.awaitAll()
     }
 
-internal fun Any?.toStringValueRepresentative(): String? = when (this) {
-    is File -> absolutePath
-    is Path -> absolutePathString()
-    is FileSystemLocation -> asFile.absolutePath
-    is Provider<*> -> (get() as? Any)?.toStringValueRepresentative()
-    else -> this?.toString()
+internal fun Any?.toStringValueRepresentative(): String {
+    return when (this) {
+        is File -> absolutePath
+        is Path -> absolutePathString()
+        is FileSystemLocation -> asFile.absolutePath
+        is Provider<*> -> get().toStringValueRepresentative()
+        else -> this.toString()
+    }
 }
 
 internal fun Dependency.collectArtifactFiles(configuration: Configuration): List<File> {

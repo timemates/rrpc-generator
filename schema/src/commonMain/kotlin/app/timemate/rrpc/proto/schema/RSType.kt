@@ -20,3 +20,9 @@ public sealed interface RSType : RSNode, Documentable {
 
 public val RSType.allExtends: List<RSExtend>
     get() = nestedExtends + nestedTypes.flatMap { it.nestedExtends }
+
+public val RSType.allEnums: List<RSEnum>
+    get() {
+        val enums = nestedTypes.filterIsInstance<RSEnum>()
+        return enums + enums.flatMap { it.allEnums }
+    }

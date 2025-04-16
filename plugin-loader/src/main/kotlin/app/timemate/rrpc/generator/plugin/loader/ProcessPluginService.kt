@@ -58,8 +58,6 @@ public interface ProcessPluginService : PluginService {
                 throw IllegalStateException("Error while processing communication (for ${commands.joinToString(" ")}, expected receiving meta information, but didn't receive it.")
             }.info
 
-            logger.lifecycle("received initial message: $metaInfo")
-
             logger.debug("Received meta information about `$callable`: $metaInfo. Plugin is successfully loaded.")
 
             return when (metaInfo.role) {
@@ -136,6 +134,10 @@ private class ProcessCodeGeneratorPluginService(
         process.destroy()
         communication.close()
     }
+
+    override fun toString(): String {
+        return "Generation Plugin '$name' at ${process.pid()} PID"
+    }
 }
 
 private class ProcessModifierPluginService(
@@ -182,5 +184,9 @@ private class ProcessModifierPluginService(
         systemLogger.debug("Finishing the process with PID ${process.pid()} of `$name` plugin.")
         process.destroy()
         communication.close()
+    }
+
+    override fun toString(): String {
+        return "Processor Plugin '$name' at ${process.pid()} PID"
     }
 }

@@ -1,5 +1,5 @@
 plugins {
-    id(libs.plugins.conventions.multiplatform.library.get().pluginId)
+    id(libs.plugins.conventions.jvm.library.get().pluginId)
     alias(libs.plugins.kotlinx.serialization)
 }
 
@@ -12,23 +12,23 @@ version = System.getenv("LIB_VERSION") ?: "SNAPSHOT"
 
 dependencies {
     // -- Project --
-    commonMainApi(projects.schema)
-    commonMainApi(projects.pluginApi)
+    api(projects.schema)
+    api(projects.pluginApi)
 
     // -- Serialization --
-    commonMainImplementation(libs.kotlinx.serialization.proto)
+    implementation(libs.kotlinx.serialization.proto)
 
     // -- Coroutines --
-    commonMainImplementation(libs.kotlinx.coroutines)
+    implementation(libs.kotlinx.coroutines)
 
     // -- SquareUp --
-    commonMainImplementation(libs.squareup.wire.schema)
-    commonMainImplementation(libs.squareup.kotlinpoet)
-    commonMainImplementation(libs.squareup.okio)
+    implementation(libs.squareup.wire.schema)
+    implementation(libs.squareup.kotlinpoet)
+    implementation(libs.squareup.okio)
 
     // -- Test --
-    commonTestImplementation(libs.kotlin.test)
-    commonTestImplementation(libs.squareup.okio.fakeFs)
+    testImplementation(libs.kotlin.test)
+    testImplementation(libs.squareup.okio.fakeFs)
 }
 
 

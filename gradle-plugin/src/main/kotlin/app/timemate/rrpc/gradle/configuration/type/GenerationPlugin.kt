@@ -1,8 +1,13 @@
 package app.timemate.rrpc.gradle.configuration.type
 
+import org.gradle.api.artifacts.Dependency
 import org.gradle.api.artifacts.FileCollectionDependency
 import org.gradle.api.artifacts.ModuleDependency
 import org.gradle.api.artifacts.ProjectDependency
+import org.gradle.api.provider.Provider
+import org.gradle.api.tasks.Input
+import org.gradle.api.tasks.Nested
+import java.io.Serializable
 
 /**
  * Represents a plugin and its configuration used during code generation in the rRPC Gradle plugin.
@@ -23,9 +28,11 @@ import org.gradle.api.artifacts.ProjectDependency
  * @property options A map of plugin-specific options defined via the DSL.
  */
 internal data class GenerationPlugin(
-    val dependency: Any,
-    val options: Map<String, Any>,
-)
+    @Transient val dependency: Dependency,
+    val options: PluginOptions
+) : Serializable
+
+
 
 internal val GenerationPlugin.isAsModule: Boolean
     get() = dependency is ModuleDependency

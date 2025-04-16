@@ -13,6 +13,7 @@ import app.timemate.rrpc.generator.plugin.api.logger.RLogger
 import app.timemate.rrpc.generator.plugin.api.sourceInputs
 import com.squareup.wire.schema.Location
 import com.squareup.wire.schema.SchemaLoader
+import kotlinx.serialization.protobuf.ProtoType
 import okio.FileSystem
 
 public class CodeGenerator(
@@ -31,14 +32,14 @@ public class CodeGenerator(
         options: GenerationOptions,
         loggerFactory: (pluginName: String) -> RLogger,
     ) {
-        options[GenerationOptions.Companion.GEN_OUTPUT] ?: error("gen_output option is required")
+        options[GenerationOptions.GEN_OUTPUT] ?: error("gen_output option is required")
 
         val schemaLoader = SchemaLoader(fileSystem)
         schemaLoader.permitPackageCycles = options.isPackageCyclesPermitted
 
         schemaLoader.initRoots(
-            sourcePath = options.sourceInputs.map { Location.Companion.get(it.toFile().path) },
-            protoPath = options.contextInputs.map { Location.Companion.get(it.toFile().path) }
+            sourcePath = options.sourceInputs.map { Location.get(it.toFile().path) },
+            protoPath = options.contextInputs.map { Location.get(it.toFile().path) }
         )
 
         val schema = schemaLoader.loadSchema()
@@ -50,7 +51,7 @@ public class CodeGenerator(
             val pluginOptionPrefix = "${plugin.name}:"
 
             // scope options for plugin-specific and general that might be useful for generator
-            val pluginOptions = GenerationOptions.Companion.create {
+            val pluginOptions = GenerationOptions.create {
                 options.raw.forEach { key, value ->
                     if (key.startsWith(pluginOptionPrefix)) {
                         if (value is Collection<*>) {
@@ -64,8 +65,8 @@ public class CodeGenerator(
                 }
 
                 // might be useful for generators, like for go, because it must fail if package cycles are permitted
-                set(GenerationOptions.Companion.PERMIT_PACKAGE_CYCLES, options[GenerationOptions.Companion.PERMIT_PACKAGE_CYCLES]?.toString() ?: "false")
-                set(GenerationOptions.Companion.GEN_OUTPUT, options[GenerationOptions.Companion.GEN_OUTPUT]!!.toString() + "/${plugin.name}")
+                set(GenerationOptions.PERMIT_PACKAGE_CYCLES, options[GenerationOptions.Companion.PERMIT_PACKAGE_CYCLES]?.toString() ?: "false")
+                set(GenerationOptions.GEN_OUTPUT, options[GenerationOptions.Companion.GEN_OUTPUT]!!.toString() + "/${plugin.name}")
             }
 
             val logger = loggerFactory(plugin.name)

@@ -1,6 +1,7 @@
 package app.timemate.rrpc.proto.schema.value
 
 import kotlinx.serialization.Serializable
+import kotlin.jvm.JvmInline
 
 @Serializable
 @JvmInline
@@ -42,8 +43,8 @@ public value class RSDeclarationUrl(public val value: String) {
 
         public val STRING: RSDeclarationUrl = RSDeclarationUrl("string")
 
-        public val SINT32: RSDeclarationUrl = RSDeclarationUrl("int32")
-        public val SINT64: RSDeclarationUrl = RSDeclarationUrl("int64")
+        public val SINT32: RSDeclarationUrl = RSDeclarationUrl("sint32")
+        public val SINT64: RSDeclarationUrl = RSDeclarationUrl("sint64")
 
         public val BOOL: RSDeclarationUrl = RSDeclarationUrl("bool")
 
@@ -109,7 +110,7 @@ public value class RSDeclarationUrl(public val value: String) {
         public val INT32_VALUE: RSDeclarationUrl = RSDeclarationUrl("type.googleapis.com/google.protobuf.Int32Value")
         public val INT64_VALUE: RSDeclarationUrl = RSDeclarationUrl("type.googleapis.com/google.protobuf.Int64Value")
         public val UINT32_VALUE: RSDeclarationUrl = RSDeclarationUrl("type.googleapis.com/google.protobuf.UInt32Value")
-        public val UINT64_VALUE: RSDeclarationUrl = RSDeclarationUrl("type.googleapis.com/google.protobuf.UINT64Value")
+        public val UINT64_VALUE: RSDeclarationUrl = RSDeclarationUrl("type.googleapis.com/google.protobuf.UInt64Value")
         public val STRING_VALUE: RSDeclarationUrl = RSDeclarationUrl("type.googleapis.com/google.protobuf.StringValue")
         public val BYTES_VALUE: RSDeclarationUrl = RSDeclarationUrl("type.googleapis.com/google.protobuf.BytesValue")
         public val BOOL_VALUE: RSDeclarationUrl = RSDeclarationUrl("type.googleapis.com/google.protobuf.BoolValue")
